@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
     DEFAULT_EXPIRE_AFTER,
     DEFAULT_PRIORITY,
     DEFAULT_STRATEGY,
@@ -127,6 +128,7 @@ class SmartNotifyConfig:
     default_tolerance: int = DEFAULT_TOLERANCE
     default_expire_after: str = DEFAULT_EXPIRE_AFTER
     log_level: str = "info"
+    arrival_debounce_seconds: int = DEFAULT_ARRIVAL_DEBOUNCE_SECONDS
 
     @classmethod
     def from_entry_data(cls, data: Mapping[str, Any]) -> SmartNotifyConfig:
@@ -141,6 +143,9 @@ class SmartNotifyConfig:
             default_tolerance=int(data.get("default_tolerance", DEFAULT_TOLERANCE)),
             default_expire_after=data.get("default_expire_after", DEFAULT_EXPIRE_AFTER),
             log_level=data.get("log_level", "info"),
+            arrival_debounce_seconds=int(
+                data.get("arrival_debounce_seconds", DEFAULT_ARRIVAL_DEBOUNCE_SECONDS)
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -152,6 +157,7 @@ class SmartNotifyConfig:
             "default_tolerance": self.default_tolerance,
             "default_expire_after": self.default_expire_after,
             "log_level": self.log_level,
+            "arrival_debounce_seconds": self.arrival_debounce_seconds,
         }
 
 

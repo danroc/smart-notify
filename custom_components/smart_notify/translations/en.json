@@ -9,6 +9,7 @@
           "default_strategy": "Default strategy",
           "default_tolerance": "Default tolerance (meters)",
           "default_expire_after": "Default expiration",
+          "arrival_debounce_seconds": "Arrival debounce (seconds)",
           "log_level": "Logging level"
         }
       },
@@ -32,6 +33,7 @@
           "default_strategy": "Default strategy",
           "default_tolerance": "Default tolerance (meters)",
           "default_expire_after": "Default expiration",
+          "arrival_debounce_seconds": "Arrival debounce (seconds)",
           "log_level": "Logging level"
         }
       }

@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.core import callback
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
@@ -18,6 +20,9 @@ from .recipient import RecipientResolver
 from .util import generate_id, parse_expire_after
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+    from datetime import datetime
+
     from homeassistant.core import HomeAssistant, State
 
     from .storage import SmartNotifyStorage
@@ -45,6 +50,7 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._delivered_today = 0
         self._failed_today = 0
         self._today = dt_util.utcnow().date()
+        self._arrival_debounce_unsub: Callable[[], None] | None = None
 
     @property
     def config(self) -> SmartNotifyConfig:
@@ -91,6 +97,7 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_shutdown(self) -> None:
         """Shut down coordinator resources."""
+        self._cancel_arrival_debounce()
         await self._listener.async_stop()
 
     def update_config(self, config: SmartNotifyConfig) -> None:
@@ -148,11 +155,33 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         _old_state: State,
         _new_state: State,
     ) -> None:
-        """Flush queue when a person arrives home."""
-        _LOGGER.debug("Evaluating queue after arrival of %s", entity_id)
+        """Debounce queue flush when a person arrives home."""
+        delay = self._config.arrival_debounce_seconds
+        _LOGGER.debug(
+            "Scheduling queue evaluation after arrival of %s (debounce %ss)",
+            entity_id,
+            delay,
+        )
+        self._cancel_arrival_debounce()
+
+        @callback
+        def _run_flush(_now: datetime) -> None:
+            self._arrival_debounce_unsub = None
+            self.hass.async_create_task(self._async_flush_after_arrival())
+
+        self._arrival_debounce_unsub = async_call_later(self.hass, delay, _run_flush)
+
+    async def _async_flush_after_arrival(self) -> None:
+        """Expire and flush the queue after the arrival debounce window."""
         await self._async_expire_notifications()
         await self._async_flush_queue()
         self.async_set_updated_data(self._build_data())
+
+    def _cancel_arrival_debounce(self) -> None:
+        """Cancel a pending arrival debounce timer."""
+        if self._arrival_debounce_unsub is not None:
+            self._arrival_debounce_unsub()
+            self._arrival_debounce_unsub = None
 
     async def _async_flush_queue(self) -> None:
         """Attempt delivery for all pending queued notifications."""

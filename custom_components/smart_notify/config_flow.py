@@ -10,12 +10,14 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_ARRIVAL_DEBOUNCE_SECONDS,
     CONF_DEFAULT_EXPIRE_AFTER,
     CONF_DEFAULT_STRATEGY,
     CONF_DEFAULT_TOLERANCE,
     CONF_LOG_LEVEL,
     CONF_PERSON_SERVICES,
     CONF_PERSONS,
+    DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
     DEFAULT_EXPIRE_AFTER,
     DEFAULT_STRATEGY,
     DEFAULT_TOLERANCE,
@@ -49,6 +51,18 @@ def _user_schema() -> vol.Schema:
             CONF_DEFAULT_EXPIRE_AFTER,
             default=DEFAULT_EXPIRE_AFTER,
         ): selector.TextSelector(),
+        vol.Required(
+            CONF_ARRIVAL_DEBOUNCE_SECONDS,
+            default=DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
+        ): selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=0,
+                max=600,
+                step=5,
+                mode=selector.NumberSelectorMode.BOX,
+                unit_of_measurement="seconds",
+            ),
+        ),
         vol.Required(CONF_LOG_LEVEL, default="info"): selector.SelectSelector(
             selector.SelectSelectorConfig(options=["debug", "info", "warning"]),
         ),
@@ -87,6 +101,9 @@ class SmartNotifyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_DEFAULT_STRATEGY: user_input[CONF_DEFAULT_STRATEGY],
                     CONF_DEFAULT_TOLERANCE: user_input[CONF_DEFAULT_TOLERANCE],
                     CONF_DEFAULT_EXPIRE_AFTER: user_input[CONF_DEFAULT_EXPIRE_AFTER],
+                    CONF_ARRIVAL_DEBOUNCE_SECONDS: int(
+                        user_input[CONF_ARRIVAL_DEBOUNCE_SECONDS]
+                    ),
                     CONF_LOG_LEVEL: user_input[CONF_LOG_LEVEL],
                 }
                 return await self.async_step_person_services()
@@ -179,6 +196,20 @@ class SmartNotifyOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_DEFAULT_EXPIRE_AFTER, DEFAULT_EXPIRE_AFTER
                 ),
             ): selector.TextSelector(),
+            vol.Required(
+                CONF_ARRIVAL_DEBOUNCE_SECONDS,
+                default=self.config_entry.data.get(
+                    CONF_ARRIVAL_DEBOUNCE_SECONDS, DEFAULT_ARRIVAL_DEBOUNCE_SECONDS
+                ),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=600,
+                    step=5,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="seconds",
+                ),
+            ),
             vol.Required(
                 CONF_LOG_LEVEL,
                 default=self.config_entry.data.get(CONF_LOG_LEVEL, "info"),

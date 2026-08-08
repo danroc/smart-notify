@@ -17,6 +17,7 @@ CONF_DEFAULT_STRATEGY: Final = "default_strategy"
 CONF_DEFAULT_TOLERANCE: Final = "default_tolerance"
 CONF_DEFAULT_EXPIRE_AFTER: Final = "default_expire_after"
 CONF_LOG_LEVEL: Final = "log_level"
+CONF_ARRIVAL_DEBOUNCE_SECONDS: Final = "arrival_debounce_seconds"
 
 SERVICE_SEND: Final = "send"
 
@@ -37,6 +38,7 @@ DEFAULT_TOLERANCE: Final = 500
 DEFAULT_EXPIRE_AFTER: Final = "4h"
 DEFAULT_PRIORITY: Final = "normal"
 DEFAULT_QUEUE_IF_NO_CANDIDATE: Final = True
+DEFAULT_ARRIVAL_DEBOUNCE_SECONDS: Final = 30
 
 PRIORITY_NORMAL: Final = "normal"
 PRIORITY_HIGH: Final = "high"
