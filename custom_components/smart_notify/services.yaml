@@ -1,0 +1,71 @@
+send:
+  name: Send
+  description: Route a notification using Smart Notify strategies.
+  fields:
+    message:
+      required: true
+      example: Washing machine finished.
+      selector:
+        text:
+    title:
+      required: false
+      example: Laundry
+      selector:
+        text:
+    strategy:
+      required: false
+      example: closest
+      selector:
+        select:
+          options:
+            - everyone
+            - everyone_home
+            - everyone_away
+            - closest
+            - first_home
+            - template
+    tolerance:
+      required: false
+      example: 500
+      selector:
+        number:
+          min: 0
+          step: 50
+          mode: box
+    queue_if_no_candidate:
+      required: false
+      default: true
+      selector:
+        boolean:
+    expire_after:
+      required: false
+      example: 4h
+      selector:
+        text:
+    priority:
+      required: false
+      example: normal
+      selector:
+        text:
+    tag:
+      required: false
+      example: laundry
+      selector:
+        text:
+    data:
+      required: false
+      selector:
+        object:
+    channels:
+      required: false
+      selector:
+        object:
+    metadata:
+      required: false
+      selector:
+        object:
+    template:
+      required: false
+      description: Jinja template returning person entity IDs for the template strategy.
+      selector:
+        text:

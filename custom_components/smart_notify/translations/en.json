@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Smart Notify",
+        "description": "Configure intelligent notification routing.",
+        "data": {
+          "persons": "Persons",
+          "default_strategy": "Default strategy",
+          "default_tolerance": "Default tolerance (meters)",
+          "default_expire_after": "Default expiration",
+          "log_level": "Logging level"
+        }
+      },
+      "person_services": {
+        "title": "Notification services",
+        "description": "Map each person to one or more notify services."
+      }
+    },
+    "error": {
+      "persons_required": "Select at least one person."
+    },
+    "abort": {
+      "already_configured": "Smart Notify is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Smart Notify options",
+        "data": {
+          "default_strategy": "Default strategy",
+          "default_tolerance": "Default tolerance (meters)",
+          "default_expire_after": "Default expiration",
+          "log_level": "Logging level"
+        }
+      }
+    }
+  }
+}

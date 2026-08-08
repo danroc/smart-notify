@@ -1,0 +1,65 @@
+"""Test helpers for Smart Notify."""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock
+
+import pytest
+from homeassistant.const import ATTR_LATITUDE, ATTR_LONGITUDE
+from homeassistant.core import HomeAssistant, State
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components.smart_notify.const import DOMAIN
+
+pytest_plugins = "pytest_homeassistant_custom_component"
+
+
+@pytest.fixture(autouse=True)
+def enable_custom_integrations_autouse(enable_custom_integrations: object) -> None:
+    """Load custom components from this repository in every test."""
+
+
+def make_person(
+    entity_id: str,
+    state: str,
+    latitude: float,
+    longitude: float,
+) -> State:
+    """Create a person state for tests."""
+    return State(
+        entity_id,
+        state,
+        {
+            ATTR_LATITUDE: latitude,
+            ATTR_LONGITUDE: longitude,
+        },
+    )
+
+
+@pytest.fixture
+def mock_hass() -> MagicMock:
+    """Create a mocked Home Assistant instance."""
+    mock = MagicMock()
+    mock.config.latitude = 48.8566
+    mock.config.longitude = 2.3522
+    return mock
+
+
+@pytest.fixture
+async def smart_notify_config_entry(hass: HomeAssistant) -> MockConfigEntry:
+    """Create and set up a Smart Notify config entry."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            "persons": ["person.alice"],
+            "person_services": {"person.alice": ["notify.mobile_app_alice"]},
+            "default_strategy": "closest",
+            "default_tolerance": 500,
+            "default_expire_after": "4h",
+            "log_level": "info",
+        },
+    )
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
