@@ -37,7 +37,7 @@ class DeliveryManager:
         self._config = config
 
     def services_for_recipients(self, recipients: list[str]) -> dict[str, list[str]]:
-        """Map recipients to notify service entity IDs."""
+        """Map recipients to configured notify targets (entities or legacy services)."""
         mapping: dict[str, list[str]] = {}
         for recipient in recipients:
             services = self._config.person_services.get(recipient, [])
@@ -69,12 +69,7 @@ class DeliveryManager:
                     service,
                 )
                 try:
-                    await self._hass.services.async_call(
-                        domain,
-                        service_name,
-                        data,
-                        blocking=True,
-                    )
+                    await self._async_call_notify(service, domain, service_name, data)
                     services_used.append(service)
                 except Exception as err:
                     message = f"Delivery to {service} failed: {err}"
@@ -106,6 +101,45 @@ class DeliveryManager:
             })
         await self._storage.async_save()
         return record
+
+    async def _async_call_notify(
+        self,
+        target: str,
+        domain: str,
+        service_name: str,
+        data: dict[str, Any],
+    ) -> None:
+        """Call a legacy notify service or notify.send_message for an entity."""
+        if self._hass.services.has_service(domain, service_name):
+            await self._hass.services.async_call(
+                domain,
+                service_name,
+                data,
+                blocking=True,
+            )
+            return
+
+        if domain == "notify" and self._hass.states.get(target) is not None:
+            send_data: dict[str, Any] = {"message": data["message"]}
+            if "title" in data:
+                send_data["title"] = data["title"]
+            if "data" in data:
+                _LOGGER.warning(
+                    "Ignoring notify data for entity %s; use a legacy notify "
+                    "service for rich payloads",
+                    target,
+                )
+            await self._hass.services.async_call(
+                "notify",
+                "send_message",
+                send_data,
+                target={"entity_id": target},
+                blocking=True,
+            )
+            return
+
+        msg = f"Action {target} not found"
+        raise ValueError(msg)
 
     @staticmethod
     def _build_notify_data(payload: NotificationPayload) -> dict[str, Any]:
