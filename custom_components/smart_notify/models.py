@@ -15,7 +15,7 @@ from .const import (
     DEFAULT_TOLERANCE,
     QUEUE_STATUS_PENDING,
 )
-from .util import default_queue_if_no_candidate, normalize_strategy
+from .util import default_queue_if_no_candidate
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -63,7 +63,7 @@ class NotificationPayload:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> NotificationPayload:
         """Deserialize from storage."""
-        strategy = normalize_strategy(data["strategy"])
+        strategy = data["strategy"]
         if "queue_if_no_candidate" in data:
             queue_if_no_candidate = bool(data["queue_if_no_candidate"])
         else:
@@ -146,9 +146,7 @@ class SmartNotifyConfig:
                 key: list(value)
                 for key, value in data.get("person_services", {}).items()
             },
-            default_strategy=normalize_strategy(
-                data.get("default_strategy", DEFAULT_STRATEGY)
-            ),
+            default_strategy=data.get("default_strategy", DEFAULT_STRATEGY),
             default_tolerance=int(data.get("default_tolerance", DEFAULT_TOLERANCE)),
             default_expire_after=data.get("default_expire_after", DEFAULT_EXPIRE_AFTER),
             log_level=data.get("log_level", "info"),

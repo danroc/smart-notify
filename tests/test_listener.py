@@ -379,19 +379,24 @@ async def test_queued_persons_filter_survives_flush(
     assert delivered == [["person.alice"]]
 
 
+@pytest.mark.parametrize(
+    "strategy",
+    ["template", "everyone", "everyone_home", "everyone_away", "first_home"],
+)
 @pytest.mark.asyncio
 async def test_flush_unknown_strategy_marks_failed(
     hass: HomeAssistant,
     smart_notify_config_entry: MockConfigEntry,
+    strategy: str,
 ) -> None:
     """Queued items with a removed strategy are marked failed on flush."""
     coordinator = hass.data[DOMAIN]["coordinator"]
     now = dt_util.utcnow()
     payload = NotificationPayload(
-        id="old-template",
+        id=f"old-{strategy}",
         title=None,
         message="Hello",
-        strategy="template",
+        strategy=strategy,
         priority="normal",
         tag=None,
         payload={},
@@ -404,46 +409,3 @@ async def test_flush_unknown_strategy_marks_failed(
     await coordinator._async_flush_queue()
     assert coordinator.pending_count() == 0
     assert coordinator.failed_today() == 1
-
-
-@pytest.mark.asyncio
-async def test_flush_legacy_first_home_strategy_delivers(
-    hass: HomeAssistant,
-    smart_notify_config_entry: MockConfigEntry,
-) -> None:
-    """Queued items stored as first_home are treated as arrival."""
-    coordinator = hass.data[DOMAIN]["coordinator"]
-    hass.states.async_set(
-        "person.alice",
-        "home",
-        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-    )
-    now = dt_util.utcnow()
-    payload = NotificationPayload(
-        id="old-first-home",
-        title=None,
-        message="Hello",
-        strategy="first_home",
-        priority="normal",
-        tag=None,
-        payload={},
-        created=now,
-        expires=now + timedelta(hours=4),
-        metadata={},
-    )
-    await coordinator.queue_manager.enqueue(payload)
-    record = DeliveryRecord(
-        notification_id="old-first-home",
-        recipients=["person.alice"],
-        services=["notify.mobile_app_alice"],
-        delivered_at=dt_util.utcnow(),
-        success=True,
-    )
-    with patch.object(
-        coordinator._delivery,
-        "deliver",
-        AsyncMock(return_value=record),
-    ):
-        await coordinator._async_flush_queue()
-    assert coordinator.pending_count() == 0
-    assert coordinator.delivered_today() == 1

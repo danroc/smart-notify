@@ -88,13 +88,6 @@ STRATEGY_LABELS: Final = {
     STRATEGY_ARRIVAL: "Arrival",
 }
 
-STRATEGY_LEGACY_ALIASES: Final = {
-    "everyone": STRATEGY_DIRECT,
-    "everyone_home": STRATEGY_HOME,
-    "everyone_away": STRATEGY_AWAY,
-    "first_home": STRATEGY_ARRIVAL,
-}
-
 STRATEGIES_QUEUE_BY_DEFAULT: Final = frozenset({STRATEGY_ARRIVAL, STRATEGY_CLOSEST})
 
 PLATFORMS: Final = ["sensor"]

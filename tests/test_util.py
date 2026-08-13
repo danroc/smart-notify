@@ -18,7 +18,6 @@ from custom_components.smart_notify.const import (
 from custom_components.smart_notify.util import (
     default_queue_if_no_candidate,
     is_eligible_person,
-    normalize_strategy,
     parse_duration,
     parse_expire_after,
 )
@@ -53,16 +52,6 @@ def test_is_eligible_person() -> None:
     assert not is_eligible_person(None)
     assert not is_eligible_person(State("person.alice", STATE_UNAVAILABLE))
     assert not is_eligible_person(State("person.alice", STATE_UNKNOWN))
-
-
-def test_normalize_strategy_maps_legacy_names() -> None:
-    """Old strategy identifiers map onto the renamed ones."""
-    assert normalize_strategy("everyone") == "direct"
-    assert normalize_strategy("everyone_home") == "home"
-    assert normalize_strategy("everyone_away") == "away"
-    assert normalize_strategy("first_home") == "arrival"
-    assert normalize_strategy("closest") == "closest"
-    assert normalize_strategy("template") == "template"
 
 
 def test_default_queue_if_no_candidate() -> None:

@@ -7,7 +7,6 @@ from homeassistant.util import dt as dt_util
 from custom_components.smart_notify.models import (
     NotificationPayload,
     QueuedNotification,
-    SmartNotifyConfig,
 )
 
 
@@ -68,26 +67,16 @@ def test_payload_from_dict_queue_default_follows_strategy() -> None:
     assert NotificationPayload.from_dict(data).queue_if_no_candidate is True
 
 
-def test_payload_from_dict_normalizes_legacy_strategy() -> None:
-    """Stored everyone/first_home names map to the renamed strategies."""
+def test_payload_from_dict_keeps_stored_strategy() -> None:
+    """Queue entries keep the strategy name they were stored with."""
     data = _payload().to_dict()
     data["strategy"] = "first_home"
     restored = NotificationPayload.from_dict(data)
-    assert restored.strategy == "arrival"
-
-
-def test_config_maps_legacy_default_strategy() -> None:
-    """Config entries that still store everyone use direct at runtime."""
-    config = SmartNotifyConfig.from_entry_data({
-        "persons": ["person.alice"],
-        "person_services": {},
-        "default_strategy": "everyone",
-    })
-    assert config.default_strategy == "direct"
+    assert restored.strategy == "first_home"
 
 
 def test_queued_notification_from_dict_follows_payload_strategy() -> None:
-    """Queue entries store one strategy; aliases are applied via the payload."""
+    """Queue entries keep the stored strategy name on the item and payload."""
     payload_data = _payload().to_dict()
     payload_data["strategy"] = "first_home"
     restored = QueuedNotification.from_dict({
@@ -99,5 +88,5 @@ def test_queued_notification_from_dict_follows_payload_strategy() -> None:
         "status": "pending",
         "delivery_attempts": 0,
     })
-    assert restored.strategy == "arrival"
-    assert restored.payload.strategy == "arrival"
+    assert restored.strategy == "first_home"
+    assert restored.payload.strategy == "first_home"

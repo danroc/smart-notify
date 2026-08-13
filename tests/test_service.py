@@ -317,11 +317,11 @@ async def test_closest_queues_by_default_without_coordinates(
 
 
 @pytest.mark.asyncio
-async def test_legacy_default_strategy_sends_without_strategy_field(
+async def test_omitted_strategy_uses_config_default(
     hass: HomeAssistant,
 ) -> None:
-    """A config entry still storing everyone treats omitted strategy as direct."""
-    entry = make_config_entry(default_strategy="everyone")
+    """A send without strategy uses the config default."""
+    entry = make_config_entry(default_strategy="direct")
     entry.add_to_hass(hass)
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()

@@ -25,7 +25,6 @@ from .const import (
     STRATEGY_CHOICES,
     STRATEGY_LABELS,
 )
-from .util import normalize_strategy
 
 
 def _strategy_selector_options() -> list[selector.SelectOptionDict]:
@@ -181,8 +180,8 @@ class SmartNotifyOptionsFlowHandler(config_entries.OptionsFlow):
         schema_dict: dict[vol.Marker, Any] = {
             vol.Required(
                 CONF_DEFAULT_STRATEGY,
-                default=normalize_strategy(
-                    self.config_entry.data.get(CONF_DEFAULT_STRATEGY, DEFAULT_STRATEGY)
+                default=self.config_entry.data.get(
+                    CONF_DEFAULT_STRATEGY, DEFAULT_STRATEGY
                 ),
             ): selector.SelectSelector(
                 selector.SelectSelectorConfig(options=_strategy_selector_options()),
