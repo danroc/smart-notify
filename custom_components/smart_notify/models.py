@@ -38,7 +38,7 @@ class NotificationPayload:
     tolerance: int | None = None
     queue_if_no_candidate: bool = True
     channels: list[str] | None = None
-    template: str | None = None
+    persons: list[str] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dictionary."""
@@ -56,7 +56,7 @@ class NotificationPayload:
             "tolerance": self.tolerance,
             "queue_if_no_candidate": self.queue_if_no_candidate,
             "channels": self.channels,
-            "template": self.template,
+            "persons": self.persons,
         }
 
     @classmethod
@@ -76,7 +76,7 @@ class NotificationPayload:
             tolerance=data.get("tolerance"),
             queue_if_no_candidate=data.get("queue_if_no_candidate", True),
             channels=data.get("channels"),
-            template=data.get("template"),
+            persons=data.get("persons"),
         )
 
 

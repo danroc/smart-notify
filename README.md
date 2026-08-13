@@ -16,10 +16,14 @@ data:
   title: Laundry
   message: Washing machine finished.
   strategy: closest
+  persons:
+    - person.daniel
   tolerance: 500
   queue_if_no_candidate: true
   expire_after: "4h"
 ```
+
+`persons` is optional. Omit it to consider every person configured in the integration.
 
 ## Development
 

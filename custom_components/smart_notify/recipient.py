@@ -34,9 +34,21 @@ class RecipientResolver:
         )
         return eligible
 
-    def resolve(self, strategy_name: str, params: dict[str, Any]) -> list[str]:
-        """Resolve recipients for a strategy."""
+    def resolve(
+        self,
+        strategy_name: str,
+        params: dict[str, Any],
+        persons: list[str] | None = None,
+    ) -> list[str]:
+        """Resolve recipients for a strategy.
+
+        When ``persons`` is set, only those entity IDs that are also configured
+        and eligible are passed to the strategy. Unknown IDs are dropped.
+        """
         eligible = self.get_eligible_persons()
+        if persons is not None:
+            allowed = set(persons)
+            eligible = [state for state in eligible if state.entity_id in allowed]
         context = StrategyContext(
             hass=self._hass,
             persons=eligible,

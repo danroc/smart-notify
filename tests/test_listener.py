@@ -19,6 +19,7 @@ from custom_components.smart_notify.const import (
     DOMAIN,
 )
 from custom_components.smart_notify.models import DeliveryRecord, NotificationPayload
+from tests.conftest import make_config_entry
 
 if TYPE_CHECKING:
     from freezegun.api import FrozenDateTimeFactory
@@ -95,20 +96,9 @@ async def test_arrival_debounce_waits_for_second_person(
     freezer: FrozenDateTimeFactory,
 ) -> None:
     """Debounced flush includes people who arrive during the wait window."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={
-            "persons": ["person.alice", "person.bob"],
-            "person_services": {
-                "person.alice": ["notify.mobile_app_alice"],
-                "person.bob": ["notify.mobile_app_bob"],
-            },
-            "default_strategy": "first_home",
-            "default_tolerance": 500,
-            "default_expire_after": "4h",
-            "log_level": "info",
-            "arrival_debounce_seconds": 30,
-        },
+    entry = make_config_entry(
+        default_strategy="first_home",
+        arrival_debounce_seconds=30,
     )
     entry.add_to_hass(hass)
     await hass.config_entries.async_setup(entry.entry_id)
@@ -318,5 +308,99 @@ async def test_failed_flush_does_not_retry(
         await _advance_arrival_debounce(hass, freezer)
 
     assert deliver.await_count == 1
+    assert coordinator.pending_count() == 0
+    assert coordinator.failed_today() == 1
+
+
+@pytest.mark.asyncio
+async def test_queued_persons_filter_survives_flush(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """A queued send for one person still targets only that person after arrival."""
+    entry = make_config_entry(
+        default_strategy="everyone_home",
+        arrival_debounce_seconds=30,
+    )
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    for entity_id, lon in (("person.alice", -74.0), ("person.bob", -74.1)):
+        hass.states.async_set(
+            entity_id,
+            "not_home",
+            {"latitude": 40.0, "longitude": lon},
+        )
+    await hass.services.async_call(
+        DOMAIN,
+        "send",
+        {
+            "message": "Laundry",
+            "strategy": "everyone_home",
+            "persons": ["person.alice"],
+            "queue_if_no_candidate": True,
+        },
+        blocking=True,
+    )
+    coordinator = hass.data[DOMAIN]["coordinator"]
+    assert coordinator.pending_count() == 1
+
+    delivered: list[list[str]] = []
+
+    async def _capture(
+        payload: NotificationPayload, recipients: list[str]
+    ) -> DeliveryRecord:
+        delivered.append(list(recipients))
+        return DeliveryRecord(
+            notification_id=payload.id,
+            recipients=recipients,
+            services=["notify.mobile_app_alice"],
+            delivered_at=dt_util.utcnow(),
+            success=True,
+        )
+
+    deliver = AsyncMock(side_effect=_capture)
+    with patch.object(coordinator._delivery, "deliver", deliver):
+        for entity_id in ("person.alice", "person.bob"):
+            hass.states.async_set(
+                entity_id,
+                "home",
+                {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
+            )
+        await coordinator._async_on_person_arrival(
+            "person.alice",
+            State("person.alice", "not_home"),
+            State("person.alice", "home"),
+        )
+        await _advance_arrival_debounce(hass, freezer)
+
+    assert coordinator.pending_count() == 0
+    assert delivered == [["person.alice"]]
+
+
+@pytest.mark.asyncio
+async def test_flush_unknown_strategy_marks_failed(
+    hass: HomeAssistant,
+    smart_notify_config_entry: MockConfigEntry,
+) -> None:
+    """Queued items with a removed strategy are marked failed on flush."""
+    coordinator = hass.data[DOMAIN]["coordinator"]
+    now = dt_util.utcnow()
+    payload = NotificationPayload(
+        id="old-template",
+        title=None,
+        message="Hello",
+        strategy="template",
+        priority="normal",
+        tag=None,
+        payload={},
+        created=now,
+        expires=now + timedelta(hours=4),
+        metadata={},
+    )
+    await coordinator.queue_manager.enqueue(payload)
+    assert coordinator.pending_count() == 1
+    await coordinator._async_flush_queue()
     assert coordinator.pending_count() == 0
     assert coordinator.failed_today() == 1

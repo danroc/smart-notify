@@ -23,7 +23,6 @@ send:
             - everyone_away
             - closest
             - first_home
-            - template
     tolerance:
       required: false
       example: 500
@@ -64,8 +63,10 @@ send:
       required: false
       selector:
         object:
-    template:
+    persons:
       required: false
-      description: Jinja template returning person entity IDs for the template strategy.
+      description: Optional subset of configured person entities to consider.
       selector:
-        text:
+        entity:
+          domain: person
+          multiple: true

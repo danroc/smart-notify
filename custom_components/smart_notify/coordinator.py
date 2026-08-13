@@ -17,6 +17,7 @@ from .listeners import EventListener
 from .models import NotificationPayload, SmartNotifyConfig
 from .queue import QueueManager
 from .recipient import RecipientResolver
+from .strategies import registry
 from .util import generate_id, parse_expire_after
 
 if TYPE_CHECKING:
@@ -115,8 +116,8 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_send(self, service_data: dict[str, Any]) -> None:
         """Handle smart_notify.send."""
         payload = self._build_payload(service_data)
-        params = self._build_strategy_params(service_data, payload)
-        recipients = self._resolver.resolve(payload.strategy, params)
+        params = self._build_strategy_params_from_payload(payload)
+        recipients = self._resolver.resolve(payload.strategy, params, payload.persons)
 
         fire_sent(
             self.hass,
@@ -188,7 +189,20 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         pending = self._queue.list_pending()
         for item in pending:
             params = self._build_strategy_params_from_payload(item.payload)
-            recipients = self._resolver.resolve(item.strategy, params)
+            if item.strategy not in registry.names():
+                await self._queue.mark_failed(item.id)
+                self._increment_failed()
+                fire_failed(
+                    self.hass,
+                    {
+                        "notification_id": item.id,
+                        "error": f"Unknown strategy: {item.strategy}",
+                    },
+                )
+                continue
+            recipients = self._resolver.resolve(
+                item.strategy, params, item.payload.persons
+            )
             if not recipients:
                 continue
             await self._queue.mark_attempt(item.id)
@@ -280,19 +294,8 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 True,
             ),
             channels=service_data.get("channels"),
-            template=service_data.get("template"),
+            persons=service_data.get("persons"),
         )
-
-    def _build_strategy_params(
-        self,
-        service_data: dict[str, Any],
-        payload: NotificationPayload,
-    ) -> dict[str, Any]:
-        """Build strategy parameters."""
-        return {
-            "tolerance": payload.tolerance,
-            "template": payload.template or service_data.get("template"),
-        }
 
     @staticmethod
     def _build_strategy_params_from_payload(
@@ -301,7 +304,6 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Build strategy parameters from a stored payload."""
         return {
             "tolerance": payload.tolerance,
-            "template": payload.template,
         }
 
     def _increment_delivered(self) -> None:

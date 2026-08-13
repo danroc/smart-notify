@@ -32,6 +32,7 @@ ATTR_TAG: Final = "tag"
 ATTR_DATA: Final = "data"
 ATTR_CHANNELS: Final = "channels"
 ATTR_METADATA: Final = "metadata"
+ATTR_PERSONS: Final = "persons"
 
 DEFAULT_STRATEGY: Final = "closest"
 DEFAULT_TOLERANCE: Final = 500
@@ -72,7 +73,6 @@ STRATEGY_EVERYONE_HOME: Final = "everyone_home"
 STRATEGY_EVERYONE_AWAY: Final = "everyone_away"
 STRATEGY_CLOSEST: Final = "closest"
 STRATEGY_FIRST_HOME: Final = "first_home"
-STRATEGY_TEMPLATE: Final = "template"
 
 STRATEGY_CHOICES: Final = [
     STRATEGY_EVERYONE,
@@ -80,7 +80,6 @@ STRATEGY_CHOICES: Final = [
     STRATEGY_EVERYONE_AWAY,
     STRATEGY_CLOSEST,
     STRATEGY_FIRST_HOME,
-    STRATEGY_TEMPLATE,
 ]
 
 PLATFORMS: Final = ["sensor"]

@@ -14,6 +14,7 @@ from .const import (
     ATTR_EXPIRE_AFTER,
     ATTR_MESSAGE,
     ATTR_METADATA,
+    ATTR_PERSONS,
     ATTR_PRIORITY,
     ATTR_QUEUE_IF_NO_CANDIDATE,
     ATTR_STRATEGY,
@@ -49,7 +50,11 @@ SERVICE_SEND_SCHEMA = vol.Schema({
     vol.Optional(ATTR_DATA): dict,
     vol.Optional(ATTR_CHANNELS): [cv.string],
     vol.Optional(ATTR_METADATA): dict,
-    vol.Optional("template"): cv.string,
+    vol.Optional(ATTR_PERSONS): vol.All(
+        cv.ensure_list,
+        [vol.All(cv.entity_id, cv.entity_domain("person"))],
+        vol.Length(min=1),
+    ),
 })
 
 

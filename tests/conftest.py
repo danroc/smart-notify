@@ -48,18 +48,29 @@ def mock_hass() -> MagicMock:
 @pytest.fixture
 async def smart_notify_config_entry(hass: HomeAssistant) -> MockConfigEntry:
     """Create and set up a Smart Notify config entry."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={
-            "persons": ["person.alice"],
-            "person_services": {"person.alice": ["notify.mobile_app_alice"]},
-            "default_strategy": "closest",
-            "default_tolerance": 500,
-            "default_expire_after": "4h",
-            "log_level": "info",
-        },
+    entry = make_config_entry(
+        persons=["person.alice"],
+        person_services={"person.alice": ["notify.mobile_app_alice"]},
+        default_strategy="closest",
     )
     entry.add_to_hass(hass)
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     return entry
+
+
+def make_config_entry(**overrides: object) -> MockConfigEntry:
+    """Build a Smart Notify config entry with overridable defaults."""
+    data: dict[str, object] = {
+        "persons": ["person.alice", "person.bob"],
+        "person_services": {
+            "person.alice": ["notify.mobile_app_alice"],
+            "person.bob": ["notify.mobile_app_bob"],
+        },
+        "default_strategy": "everyone",
+        "default_tolerance": 500,
+        "default_expire_after": "4h",
+        "log_level": "info",
+    }
+    data.update(overrides)
+    return MockConfigEntry(domain=DOMAIN, data=data)

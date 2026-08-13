@@ -33,7 +33,7 @@ def test_strategy_registry_contains_all_strategies() -> None:
     assert "closest" in names
     assert "closest_with_tolerance" not in names
     assert "first_home" in names
-    assert "template" in names
+    assert "template" not in names
 
 
 def test_closest_tolerance_zero_selects_min_distance_only(hass: MagicMock) -> None:
