@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import Any
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
 from . import (
     strategies as _strategies,  # ruff: ignore[unused-import]  # register strategies
@@ -14,12 +17,6 @@ from .models import SmartNotifyConfig
 from .services import async_setup_services, async_unload_services
 from .storage import SmartNotifyStorage
 from .util import configure_logging
-
-if TYPE_CHECKING:
-    from typing import Any
-
-    from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 

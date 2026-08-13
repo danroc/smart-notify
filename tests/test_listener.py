@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant, State
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
@@ -20,9 +20,6 @@ from custom_components.smart_notify.const import (
 )
 from custom_components.smart_notify.models import DeliveryRecord, NotificationPayload
 from tests.conftest import make_config_entry
-
-if TYPE_CHECKING:
-    from freezegun.api import FrozenDateTimeFactory
 
 
 async def _advance_arrival_debounce(

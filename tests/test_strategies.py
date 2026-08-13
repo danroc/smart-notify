@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -14,9 +14,6 @@ from custom_components.smart_notify.strategies.closest import ClosestStrategy
 from custom_components.smart_notify.strategies.direct import DirectStrategy
 from custom_components.smart_notify.strategies.home import HomeStrategy
 from tests.conftest import make_person
-
-if TYPE_CHECKING:
-    from unittest.mock import MagicMock
 
 
 @pytest.fixture

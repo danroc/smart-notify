@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import Any, ClassVar
+
+from homeassistant.core import HomeAssistant, State
 
 from ..const import HOME_STATES
-
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant, State
 
 
 @dataclass(slots=True)

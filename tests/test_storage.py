@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
 
 import pytest
 
 from custom_components.smart_notify.const import STORAGE_VERSION
 from custom_components.smart_notify.models import SmartNotifyConfig
 from custom_components.smart_notify.storage import SmartNotifyStorage
-
-if TYPE_CHECKING:
-    from unittest.mock import MagicMock
 
 
 @pytest.mark.asyncio

@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
+
+from homeassistant.core import HomeAssistant, State
 
 from .const import LOGGER_NAME
 from .strategies import registry
 from .strategies.base import StrategyContext
 from .util import get_person_states, is_eligible_person
-
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant, State
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 

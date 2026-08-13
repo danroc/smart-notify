@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable
+from datetime import datetime
+from typing import Any
 
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, State, callback
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
@@ -17,19 +19,12 @@ from .listeners import EventListener
 from .models import NotificationPayload, SmartNotifyConfig
 from .queue import QueueManager
 from .recipient import RecipientResolver
+from .storage import SmartNotifyStorage
 from .util import (
     default_queue_if_no_candidate,
     generate_id,
     parse_expire_after,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from datetime import datetime
-
-    from homeassistant.core import HomeAssistant, State
-
-    from .storage import SmartNotifyStorage
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 

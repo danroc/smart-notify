@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from homeassistant.const import (
     ATTR_LATITUDE,
@@ -13,13 +13,11 @@ from homeassistant.const import (
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
 )
+from homeassistant.core import HomeAssistant, State
 from homeassistant.util import dt as dt_util
 from homeassistant.util import location as location_util
 
 from .const import LOG_LEVELS, LOGGER_NAME, STRATEGIES_QUEUE_BY_DEFAULT
-
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant, State
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 

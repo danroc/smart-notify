@@ -41,6 +41,9 @@ ignore = [
     "RUF029", # HA async entrypoints often have no await
     "RUF067", # HA __init__.py must define setup/unload hooks
     "PLR6301", # strategy/protocol methods intentionally unused self
+    "TC001", # prefer unconditional imports over TYPE_CHECKING blocks
+    "TC002",
+    "TC003",
 ]
 
 [tool.ruff.lint.pydocstyle]

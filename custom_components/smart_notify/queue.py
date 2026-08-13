@@ -3,18 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from datetime import datetime
 
 from homeassistant.util import dt as dt_util
 
 from .const import LOGGER_NAME, QUEUE_STATUS_EXPIRED, QUEUE_STATUS_PENDING
 from .models import NotificationPayload, QueuedNotification
+from .storage import SmartNotifyStorage
 from .util import generate_id
-
-if TYPE_CHECKING:
-    from datetime import datetime
-
-    from .storage import SmartNotifyStorage
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 

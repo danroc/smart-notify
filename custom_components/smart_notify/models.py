@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from datetime import datetime
+from typing import Any
 
 from homeassistant.util import dt as dt_util
 
@@ -16,10 +18,6 @@ from .const import (
     QUEUE_STATUS_PENDING,
 )
 from .util import default_queue_if_no_candidate
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-    from datetime import datetime
 
 
 @dataclass(frozen=True, slots=True)

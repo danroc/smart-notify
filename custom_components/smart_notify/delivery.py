@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from .const import LOGGER_NAME
 from .models import DeliveryRecord, NotificationPayload, SmartNotifyConfig
-
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
-
-    from .storage import SmartNotifyStorage
+from .storage import SmartNotifyStorage
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 

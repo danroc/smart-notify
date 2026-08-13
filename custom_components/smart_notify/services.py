@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 import voluptuous as vol
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
@@ -27,11 +27,7 @@ from .const import (
     SERVICE_SEND,
     STRATEGY_CHOICES,
 )
-
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant, ServiceCall
-
-    from .coordinator import SmartNotifyCoordinator
+from .coordinator import SmartNotifyCoordinator
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 

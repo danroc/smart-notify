@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.core import Event, State
+from homeassistant.helpers.event import EventStateChangedData
 
 from custom_components.smart_notify.listeners import EventListener
-
-if TYPE_CHECKING:
-    from homeassistant.helpers.event import EventStateChangedData
 
 
 def _state_change_event(

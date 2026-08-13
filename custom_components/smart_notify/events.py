@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable
+from typing import Any
 
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 
 from .const import (
     EVENT_DELIVERED,
@@ -13,11 +14,6 @@ from .const import (
     EVENT_QUEUED,
     EVENT_SENT,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from homeassistant.core import CALLBACK_TYPE, Event
 
 
 @callback

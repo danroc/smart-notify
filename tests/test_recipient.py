@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
+
+from homeassistant.core import State
 
 from custom_components.smart_notify.recipient import RecipientResolver
 from tests.conftest import make_person
-
-if TYPE_CHECKING:
-    from unittest.mock import MagicMock
-
-    from homeassistant.core import State
 
 
 def _resolver_with_people(
