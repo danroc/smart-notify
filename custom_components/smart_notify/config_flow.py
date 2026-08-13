@@ -23,7 +23,16 @@ from .const import (
     DEFAULT_TOLERANCE,
     DOMAIN,
     STRATEGY_CHOICES,
+    STRATEGY_LABELS,
 )
+from .util import normalize_strategy
+
+
+def _strategy_selector_options() -> list[selector.SelectOptionDict]:
+    """Return labeled strategy dropdown options."""
+    return [
+        {"value": name, "label": STRATEGY_LABELS[name]} for name in STRATEGY_CHOICES
+    ]
 
 
 def _user_schema() -> vol.Schema:
@@ -35,7 +44,7 @@ def _user_schema() -> vol.Schema:
         vol.Required(
             CONF_DEFAULT_STRATEGY, default=DEFAULT_STRATEGY
         ): selector.SelectSelector(
-            selector.SelectSelectorConfig(options=STRATEGY_CHOICES),
+            selector.SelectSelectorConfig(options=_strategy_selector_options()),
         ),
         vol.Required(
             CONF_DEFAULT_TOLERANCE,
@@ -172,11 +181,11 @@ class SmartNotifyOptionsFlowHandler(config_entries.OptionsFlow):
         schema_dict: dict[vol.Marker, Any] = {
             vol.Required(
                 CONF_DEFAULT_STRATEGY,
-                default=self.config_entry.data.get(
-                    CONF_DEFAULT_STRATEGY, DEFAULT_STRATEGY
+                default=normalize_strategy(
+                    self.config_entry.data.get(CONF_DEFAULT_STRATEGY, DEFAULT_STRATEGY)
                 ),
             ): selector.SelectSelector(
-                selector.SelectSelectorConfig(options=STRATEGY_CHOICES),
+                selector.SelectSelectorConfig(options=_strategy_selector_options()),
             ),
             vol.Required(
                 CONF_DEFAULT_TOLERANCE,

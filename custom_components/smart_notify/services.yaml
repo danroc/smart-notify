@@ -18,11 +18,16 @@ send:
       selector:
         select:
           options:
-            - everyone
-            - everyone_home
-            - everyone_away
-            - closest
-            - first_home
+            - label: Direct
+              value: direct
+            - label: Home
+              value: home
+            - label: Away
+              value: away
+            - label: Closest
+              value: closest
+            - label: Arrival
+              value: arrival
     tolerance:
       required: false
       example: 500
@@ -33,7 +38,9 @@ send:
           mode: box
     queue_if_no_candidate:
       required: false
-      default: true
+      description: >-
+        Queue when nobody matches. Defaults to true for arrival and closest,
+        false for other strategies.
       selector:
         boolean:
     expire_after:

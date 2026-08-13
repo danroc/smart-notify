@@ -67,7 +67,7 @@ def make_config_entry(**overrides: object) -> MockConfigEntry:
             "person.alice": ["notify.mobile_app_alice"],
             "person.bob": ["notify.mobile_app_bob"],
         },
-        "default_strategy": "everyone",
+        "default_strategy": "direct",
         "default_tolerance": 500,
         "default_expire_after": "4h",
         "log_level": "info",

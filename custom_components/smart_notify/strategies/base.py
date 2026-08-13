@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from ..const import HOME_STATES
+
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant, State
 
@@ -17,6 +19,11 @@ class StrategyContext:
     hass: HomeAssistant
     persons: list[State]
     params: dict[str, Any] = field(default_factory=dict)
+
+
+def recipients_at_home(context: StrategyContext) -> list[str]:
+    """Return person entity IDs currently at home."""
+    return [state.entity_id for state in context.persons if state.state in HOME_STATES]
 
 
 class Strategy(ABC):

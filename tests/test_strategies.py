@@ -7,11 +7,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from custom_components.smart_notify.strategies import registry
+from custom_components.smart_notify.strategies.arrival import ArrivalStrategy
+from custom_components.smart_notify.strategies.away import AwayStrategy
 from custom_components.smart_notify.strategies.base import StrategyContext
 from custom_components.smart_notify.strategies.closest import ClosestStrategy
-from custom_components.smart_notify.strategies.everyone_away import EveryoneAwayStrategy
-from custom_components.smart_notify.strategies.everyone_home import EveryoneHomeStrategy
-from custom_components.smart_notify.strategies.first_home import FirstHomeStrategy
+from custom_components.smart_notify.strategies.direct import DirectStrategy
+from custom_components.smart_notify.strategies.home import HomeStrategy
 from tests.conftest import make_person
 
 if TYPE_CHECKING:
@@ -25,14 +26,14 @@ def hass(mock_hass: MagicMock) -> MagicMock:
 
 
 def test_strategy_registry_contains_all_strategies() -> None:
-    """Ensure all strategies are registered."""
+    """Ensure all strategies are registered under the single-word names."""
     names = registry.names()
-    assert "everyone" in names
-    assert "everyone_home" in names
-    assert "everyone_away" in names
-    assert "closest" in names
+    assert names == ["arrival", "away", "closest", "direct", "home"]
+    assert "everyone" not in names
+    assert "everyone_home" not in names
+    assert "everyone_away" not in names
+    assert "first_home" not in names
     assert "closest_with_tolerance" not in names
-    assert "first_home" in names
     assert "template" not in names
 
 
@@ -87,26 +88,49 @@ def test_closest_tolerance_zero_includes_ties(hass: MagicMock) -> None:
     assert set(recipients) == {"person.alice", "person.bob"}
 
 
-def test_everyone_home(hass: MagicMock) -> None:
-    """Select only people at home."""
+def test_direct_selects_all_eligible(hass: MagicMock) -> None:
+    """Direct notifies every eligible person regardless of presence."""
     persons = [
         make_person("person.alice", "home", 48.8566, 2.3522),
         make_person("person.bob", "not_home", 48.9000, 2.3522),
     ]
     context = StrategyContext(hass=hass, persons=persons, params={})
-    recipients = EveryoneHomeStrategy().select_recipients(context)
+    recipients = DirectStrategy().select_recipients(context)
+    assert recipients == ["person.alice", "person.bob"]
+
+
+def test_home_selects_only_people_at_home(hass: MagicMock) -> None:
+    """Home selects only people at home."""
+    persons = [
+        make_person("person.alice", "home", 48.8566, 2.3522),
+        make_person("person.bob", "not_home", 48.9000, 2.3522),
+    ]
+    context = StrategyContext(hass=hass, persons=persons, params={})
+    recipients = HomeStrategy().select_recipients(context)
     assert recipients == ["person.alice"]
 
 
-def test_first_home_when_away(hass: MagicMock) -> None:
-    """Queue when nobody is home."""
+def test_home_and_arrival_select_the_same_people(hass: MagicMock) -> None:
+    """Home and arrival share presence selection; queueing is the only difference."""
+    persons = [
+        make_person("person.alice", "home", 48.8566, 2.3522),
+        make_person("person.bob", "not_home", 48.9000, 2.3522),
+    ]
+    context = StrategyContext(hass=hass, persons=persons, params={})
+    home = HomeStrategy().select_recipients(context)
+    arrival = ArrivalStrategy().select_recipients(context)
+    assert home == arrival
+
+
+def test_arrival_empty_when_everyone_away(hass: MagicMock) -> None:
+    """Arrival with nobody home returns no recipients."""
     persons = [make_person("person.alice", "not_home", 48.9000, 2.3522)]
     context = StrategyContext(hass=hass, persons=persons, params={})
-    recipients = FirstHomeStrategy().select_recipients(context)
+    recipients = ArrivalStrategy().select_recipients(context)
     assert recipients == []
 
 
-def test_everyone_away_includes_zone_states(hass: MagicMock) -> None:
+def test_away_includes_zone_states(hass: MagicMock) -> None:
     """Persons in named zones count as away from home."""
     persons = [
         make_person("person.alice", "Work", 48.9000, 2.3522),
@@ -114,5 +138,5 @@ def test_everyone_away_includes_zone_states(hass: MagicMock) -> None:
         make_person("person.carol", "not_home", 48.9100, 2.3522),
     ]
     context = StrategyContext(hass=hass, persons=persons, params={})
-    recipients = EveryoneAwayStrategy().select_recipients(context)
+    recipients = AwayStrategy().select_recipients(context)
     assert recipients == ["person.alice", "person.carol"]

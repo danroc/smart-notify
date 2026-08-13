@@ -16,7 +16,12 @@ from homeassistant.const import (
 from homeassistant.util import dt as dt_util
 from homeassistant.util import location as location_util
 
-from .const import LOG_LEVELS, LOGGER_NAME
+from .const import (
+    LOG_LEVELS,
+    LOGGER_NAME,
+    STRATEGIES_QUEUE_BY_DEFAULT,
+    STRATEGY_LEGACY_ALIASES,
+)
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant, State
@@ -96,6 +101,20 @@ def get_person_states(hass: HomeAssistant, person_ids: list[str]) -> list[State]
         if state is not None:
             states.append(state)
     return states
+
+
+def normalize_strategy(name: str) -> str:
+    """Map legacy strategy identifiers onto current names."""
+    return STRATEGY_LEGACY_ALIASES.get(name, name)
+
+
+def default_queue_if_no_candidate(strategy: str) -> bool:
+    """Return whether an empty recipient set should queue for this strategy.
+
+    Arrival waits until someone gets home. Closest waits until someone has a
+    usable location. Other strategies are snapshots of who matches now.
+    """
+    return normalize_strategy(strategy) in STRATEGIES_QUEUE_BY_DEFAULT
 
 
 def build_service_params(payload: dict[str, Any]) -> dict[str, Any]:

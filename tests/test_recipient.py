@@ -31,7 +31,7 @@ def test_resolve_without_persons_uses_all_configured(mock_hass: MagicMock) -> No
             "person.bob": make_person("person.bob", "home", 48.8566, 2.3522),
         },
     )
-    recipients = resolver.resolve("everyone", {})
+    recipients = resolver.resolve("direct", {})
     assert recipients == ["person.alice", "person.bob"]
 
 
@@ -44,7 +44,7 @@ def test_resolve_filters_to_requested_persons(mock_hass: MagicMock) -> None:
             "person.bob": make_person("person.bob", "home", 48.8566, 2.3522),
         },
     )
-    recipients = resolver.resolve("everyone", {}, persons=["person.alice"])
+    recipients = resolver.resolve("direct", {}, persons=["person.alice"])
     assert recipients == ["person.alice"]
 
 
@@ -57,7 +57,7 @@ def test_resolve_drops_unconfigured_persons(mock_hass: MagicMock) -> None:
         },
     )
     recipients = resolver.resolve(
-        "everyone",
+        "direct",
         {},
         persons=["person.alice", "person.carol"],
     )
@@ -72,11 +72,11 @@ def test_resolve_all_unconfigured_returns_empty(mock_hass: MagicMock) -> None:
             "person.alice": make_person("person.alice", "home", 48.8566, 2.3522),
         },
     )
-    recipients = resolver.resolve("everyone", {}, persons=["person.carol"])
+    recipients = resolver.resolve("direct", {}, persons=["person.carol"])
     assert recipients == []
 
 
-def test_resolve_everyone_home_respects_filter_when_away(
+def test_resolve_home_respects_filter_when_away(
     mock_hass: MagicMock,
 ) -> None:
     """Filtering to someone who is away yields no recipients."""
@@ -87,5 +87,5 @@ def test_resolve_everyone_home_respects_filter_when_away(
             "person.bob": make_person("person.bob", "home", 48.8566, 2.3522),
         },
     )
-    recipients = resolver.resolve("everyone_home", {}, persons=["person.alice"])
+    recipients = resolver.resolve("home", {}, persons=["person.alice"])
     assert recipients == []

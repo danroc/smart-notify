@@ -38,7 +38,6 @@ DEFAULT_STRATEGY: Final = "closest"
 DEFAULT_TOLERANCE: Final = 500
 DEFAULT_EXPIRE_AFTER: Final = "4h"
 DEFAULT_PRIORITY: Final = "normal"
-DEFAULT_QUEUE_IF_NO_CANDIDATE: Final = True
 DEFAULT_ARRIVAL_DEBOUNCE_SECONDS: Final = 30
 
 PRIORITY_NORMAL: Final = "normal"
@@ -68,18 +67,34 @@ LOG_LEVELS: Final = {
     "warning": WARNING,
 }
 
-STRATEGY_EVERYONE: Final = "everyone"
-STRATEGY_EVERYONE_HOME: Final = "everyone_home"
-STRATEGY_EVERYONE_AWAY: Final = "everyone_away"
+STRATEGY_DIRECT: Final = "direct"
+STRATEGY_HOME: Final = "home"
+STRATEGY_AWAY: Final = "away"
 STRATEGY_CLOSEST: Final = "closest"
-STRATEGY_FIRST_HOME: Final = "first_home"
+STRATEGY_ARRIVAL: Final = "arrival"
 
 STRATEGY_CHOICES: Final = [
-    STRATEGY_EVERYONE,
-    STRATEGY_EVERYONE_HOME,
-    STRATEGY_EVERYONE_AWAY,
+    STRATEGY_DIRECT,
+    STRATEGY_HOME,
+    STRATEGY_AWAY,
     STRATEGY_CLOSEST,
-    STRATEGY_FIRST_HOME,
+    STRATEGY_ARRIVAL,
 ]
+STRATEGY_LABELS: Final = {
+    STRATEGY_DIRECT: "Direct",
+    STRATEGY_HOME: "Home",
+    STRATEGY_AWAY: "Away",
+    STRATEGY_CLOSEST: "Closest",
+    STRATEGY_ARRIVAL: "Arrival",
+}
+
+STRATEGY_LEGACY_ALIASES: Final = {
+    "everyone": STRATEGY_DIRECT,
+    "everyone_home": STRATEGY_HOME,
+    "everyone_away": STRATEGY_AWAY,
+    "first_home": STRATEGY_ARRIVAL,
+}
+
+STRATEGIES_QUEUE_BY_DEFAULT: Final = frozenset({STRATEGY_ARRIVAL, STRATEGY_CLOSEST})
 
 PLATFORMS: Final = ["sensor"]

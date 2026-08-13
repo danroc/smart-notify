@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 from .const import LOGGER_NAME
 from .strategies import registry
 from .strategies.base import StrategyContext
-from .util import get_person_states, is_eligible_person
+from .util import get_person_states, is_eligible_person, normalize_strategy
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant, State
@@ -54,8 +54,8 @@ class RecipientResolver:
             persons=eligible,
             params=params,
         )
-        strategy = registry.get(strategy_name)
-        _LOGGER.debug("Selected strategy: %s", strategy_name)
+        strategy = registry.get(normalize_strategy(strategy_name))
+        _LOGGER.debug("Selected strategy: %s", strategy.name)
         recipients = strategy.select_recipients(context)
         _LOGGER.debug("Strategy %s selected recipients: %s", strategy_name, recipients)
         return recipients

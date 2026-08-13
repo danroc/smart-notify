@@ -53,7 +53,7 @@ async def test_person_arrival_flushes_queue_after_debounce(
         "send",
         {
             "message": "Laundry",
-            "strategy": "everyone_home",
+            "strategy": "arrival",
             "queue_if_no_candidate": True,
         },
         blocking=True,
@@ -97,7 +97,7 @@ async def test_arrival_debounce_waits_for_second_person(
 ) -> None:
     """Debounced flush includes people who arrive during the wait window."""
     entry = make_config_entry(
-        default_strategy="first_home",
+        default_strategy="arrival",
         arrival_debounce_seconds=30,
     )
     entry.add_to_hass(hass)
@@ -119,7 +119,7 @@ async def test_arrival_debounce_waits_for_second_person(
         "send",
         {
             "message": "Laundry",
-            "strategy": "first_home",
+            "strategy": "arrival",
             "queue_if_no_candidate": True,
         },
         blocking=True,
@@ -191,7 +191,7 @@ async def test_restart_persistence(
     await hass.services.async_call(
         DOMAIN,
         "send",
-        {"message": "Persist me", "strategy": "everyone_home"},
+        {"message": "Persist me", "strategy": "arrival"},
         blocking=True,
     )
     storage = hass.data[DOMAIN]["storage"]
@@ -219,7 +219,7 @@ async def test_zone_to_home_flushes_queue(
         "send",
         {
             "message": "Laundry",
-            "strategy": "everyone_home",
+            "strategy": "arrival",
             "queue_if_no_candidate": True,
         },
         blocking=True,
@@ -272,7 +272,7 @@ async def test_failed_flush_does_not_retry(
         "send",
         {
             "message": "Laundry",
-            "strategy": "everyone_home",
+            "strategy": "arrival",
             "queue_if_no_candidate": True,
         },
         blocking=True,
@@ -319,7 +319,7 @@ async def test_queued_persons_filter_survives_flush(
 ) -> None:
     """A queued send for one person still targets only that person after arrival."""
     entry = make_config_entry(
-        default_strategy="everyone_home",
+        default_strategy="arrival",
         arrival_debounce_seconds=30,
     )
     entry.add_to_hass(hass)
@@ -337,7 +337,7 @@ async def test_queued_persons_filter_survives_flush(
         "send",
         {
             "message": "Laundry",
-            "strategy": "everyone_home",
+            "strategy": "arrival",
             "persons": ["person.alice"],
             "queue_if_no_candidate": True,
         },
@@ -404,3 +404,46 @@ async def test_flush_unknown_strategy_marks_failed(
     await coordinator._async_flush_queue()
     assert coordinator.pending_count() == 0
     assert coordinator.failed_today() == 1
+
+
+@pytest.mark.asyncio
+async def test_flush_legacy_first_home_strategy_delivers(
+    hass: HomeAssistant,
+    smart_notify_config_entry: MockConfigEntry,
+) -> None:
+    """Queued items stored as first_home are treated as arrival."""
+    coordinator = hass.data[DOMAIN]["coordinator"]
+    hass.states.async_set(
+        "person.alice",
+        "home",
+        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
+    )
+    now = dt_util.utcnow()
+    payload = NotificationPayload(
+        id="old-first-home",
+        title=None,
+        message="Hello",
+        strategy="first_home",
+        priority="normal",
+        tag=None,
+        payload={},
+        created=now,
+        expires=now + timedelta(hours=4),
+        metadata={},
+    )
+    await coordinator.queue_manager.enqueue(payload)
+    record = DeliveryRecord(
+        notification_id="old-first-home",
+        recipients=["person.alice"],
+        services=["notify.mobile_app_alice"],
+        delivered_at=dt_util.utcnow(),
+        success=True,
+    )
+    with patch.object(
+        coordinator._delivery,
+        "deliver",
+        AsyncMock(return_value=record),
+    ):
+        await coordinator._async_flush_queue()
+    assert coordinator.pending_count() == 0
+    assert coordinator.delivered_today() == 1

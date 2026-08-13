@@ -15,15 +15,24 @@ service: smart_notify.send
 data:
   title: Laundry
   message: Washing machine finished.
-  strategy: closest
+  strategy: arrival
   persons:
     - person.daniel
-  tolerance: 500
-  queue_if_no_candidate: true
   expire_after: "4h"
 ```
 
 `persons` is optional. Omit it to consider every person configured in the integration.
+
+| Strategy  | Who is notified                                           | Empty set                                   |
+| --------- | --------------------------------------------------------- | ------------------------------------------- |
+| `direct`  | Everyone eligible                                         | Drop (unless `queue_if_no_candidate: true`) |
+| `home`    | People at home now                                        | Drop (unless `queue_if_no_candidate: true`) |
+| `away`    | People away now                                           | Drop (unless `queue_if_no_candidate: true`) |
+| `closest` | People within `tolerance` of the closest distance to home | Queue until someone has a usable location   |
+| `arrival` | People at home now                                        | Queue until someone arrives home            |
+
+The queue only retries when someone enters the home zone. `away` does not wait for a
+departure.
 
 ## Development
 

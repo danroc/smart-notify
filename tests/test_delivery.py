@@ -29,7 +29,7 @@ def _payload() -> NotificationPayload:
         id="delivery-test",
         title="Title",
         message="Message",
-        strategy="everyone",
+        strategy="direct",
         priority="normal",
         tag="tag",
         payload={"foo": "bar"},

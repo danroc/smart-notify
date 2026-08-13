@@ -15,6 +15,7 @@ from .const import (
     DEFAULT_TOLERANCE,
     QUEUE_STATUS_PENDING,
 )
+from .util import default_queue_if_no_candidate, normalize_strategy
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -36,7 +37,7 @@ class NotificationPayload:
     expires: datetime
     metadata: dict[str, Any]
     tolerance: int | None = None
-    queue_if_no_candidate: bool = True
+    queue_if_no_candidate: bool = False
     channels: list[str] | None = None
     persons: list[str] | None = None
 
@@ -62,11 +63,16 @@ class NotificationPayload:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> NotificationPayload:
         """Deserialize from storage."""
+        strategy = normalize_strategy(data["strategy"])
+        if "queue_if_no_candidate" in data:
+            queue_if_no_candidate = bool(data["queue_if_no_candidate"])
+        else:
+            queue_if_no_candidate = default_queue_if_no_candidate(strategy)
         return cls(
             id=data["id"],
             title=data.get("title"),
             message=data["message"],
-            strategy=data["strategy"],
+            strategy=strategy,
             priority=data.get("priority", DEFAULT_PRIORITY),
             tag=data.get("tag"),
             payload=data.get("payload", {}),
@@ -74,7 +80,7 @@ class NotificationPayload:
             expires=dt_util.parse_datetime(data["expires"]) or dt_util.utcnow(),
             metadata=data.get("metadata", {}),
             tolerance=data.get("tolerance"),
-            queue_if_no_candidate=data.get("queue_if_no_candidate", True),
+            queue_if_no_candidate=queue_if_no_candidate,
             channels=data.get("channels"),
             persons=data.get("persons"),
         )
@@ -107,12 +113,13 @@ class QueuedNotification:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> QueuedNotification:
         """Deserialize from storage."""
+        payload = NotificationPayload.from_dict(data["payload"])
         return cls(
             id=data["id"],
             created=dt_util.parse_datetime(data["created"]) or dt_util.utcnow(),
             expires=dt_util.parse_datetime(data["expires"]) or dt_util.utcnow(),
-            strategy=data["strategy"],
-            payload=NotificationPayload.from_dict(data["payload"]),
+            strategy=payload.strategy,
+            payload=payload,
             status=data.get("status", QUEUE_STATUS_PENDING),
             delivery_attempts=data.get("delivery_attempts", 0),
         )
@@ -139,7 +146,9 @@ class SmartNotifyConfig:
                 key: list(value)
                 for key, value in data.get("person_services", {}).items()
             },
-            default_strategy=data.get("default_strategy", DEFAULT_STRATEGY),
+            default_strategy=normalize_strategy(
+                data.get("default_strategy", DEFAULT_STRATEGY)
+            ),
             default_tolerance=int(data.get("default_tolerance", DEFAULT_TOLERANCE)),
             default_expire_after=data.get("default_expire_after", DEFAULT_EXPIRE_AFTER),
             log_level=data.get("log_level", "info"),

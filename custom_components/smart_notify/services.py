@@ -22,7 +22,6 @@ from .const import (
     ATTR_TITLE,
     ATTR_TOLERANCE,
     DEFAULT_PRIORITY,
-    DEFAULT_QUEUE_IF_NO_CANDIDATE,
     DOMAIN,
     LOGGER_NAME,
     SERVICE_SEND,
@@ -41,9 +40,7 @@ SERVICE_SEND_SCHEMA = vol.Schema({
     vol.Optional(ATTR_TITLE): cv.string,
     vol.Optional(ATTR_STRATEGY): vol.In(STRATEGY_CHOICES),
     vol.Optional(ATTR_TOLERANCE): cv.positive_int,
-    vol.Optional(
-        ATTR_QUEUE_IF_NO_CANDIDATE, default=DEFAULT_QUEUE_IF_NO_CANDIDATE
-    ): cv.boolean,
+    vol.Optional(ATTR_QUEUE_IF_NO_CANDIDATE): cv.boolean,
     vol.Optional(ATTR_EXPIRE_AFTER): cv.string,
     vol.Optional(ATTR_PRIORITY, default=DEFAULT_PRIORITY): cv.string,
     vol.Optional(ATTR_TAG): cv.string,

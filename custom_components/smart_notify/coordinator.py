@@ -17,8 +17,11 @@ from .listeners import EventListener
 from .models import NotificationPayload, SmartNotifyConfig
 from .queue import QueueManager
 from .recipient import RecipientResolver
-from .strategies import registry
-from .util import generate_id, parse_expire_after
+from .util import (
+    default_queue_if_no_candidate,
+    generate_id,
+    parse_expire_after,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -189,20 +192,21 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         pending = self._queue.list_pending()
         for item in pending:
             params = self._build_strategy_params_from_payload(item.payload)
-            if item.strategy not in registry.names():
+            try:
+                recipients = self._resolver.resolve(
+                    item.strategy, params, item.payload.persons
+                )
+            except ValueError as err:
                 await self._queue.mark_failed(item.id)
                 self._increment_failed()
                 fire_failed(
                     self.hass,
                     {
                         "notification_id": item.id,
-                        "error": f"Unknown strategy: {item.strategy}",
+                        "error": str(err),
                     },
                 )
                 continue
-            recipients = self._resolver.resolve(
-                item.strategy, params, item.payload.persons
-            )
             if not recipients:
                 continue
             await self._queue.mark_attempt(item.id)
@@ -277,11 +281,15 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "expire_after",
             self._config.default_expire_after,
         )
+        strategy = service_data.get("strategy", self._config.default_strategy)
+        queue_if_no_candidate = service_data.get("queue_if_no_candidate")
+        if queue_if_no_candidate is None:
+            queue_if_no_candidate = default_queue_if_no_candidate(strategy)
         return NotificationPayload(
             id=generate_id(),
             title=service_data.get("title"),
             message=service_data["message"],
-            strategy=service_data.get("strategy", self._config.default_strategy),
+            strategy=strategy,
             priority=service_data.get("priority", "normal"),
             tag=service_data.get("tag"),
             payload=service_data.get("data", {}),
@@ -289,10 +297,7 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             expires=parse_expire_after(str(expire_after), now),
             metadata=service_data.get("metadata", {}),
             tolerance=service_data.get("tolerance", self._config.default_tolerance),
-            queue_if_no_candidate=service_data.get(
-                "queue_if_no_candidate",
-                True,
-            ),
+            queue_if_no_candidate=queue_if_no_candidate,
             channels=service_data.get("channels"),
             persons=service_data.get("persons"),
         )
