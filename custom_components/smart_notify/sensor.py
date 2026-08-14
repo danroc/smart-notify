@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -10,6 +12,22 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, SENSOR_DELIVERED_TODAY, SENSOR_FAILED_TODAY, SENSOR_PENDING
 from .coordinator import SmartNotifyCoordinator
+
+SensorValueFn = Callable[[SmartNotifyCoordinator], int]
+
+_SENSOR_DEFINITIONS: tuple[tuple[str, str, SensorValueFn], ...] = (
+    (SENSOR_PENDING, "Pending", lambda coordinator: coordinator.pending_count()),
+    (
+        SENSOR_DELIVERED_TODAY,
+        "Delivered today",
+        lambda coordinator: coordinator.delivered_today(),
+    ),
+    (
+        SENSOR_FAILED_TODAY,
+        "Failed today",
+        lambda coordinator: coordinator.failed_today(),
+    ),
+)
 
 
 async def async_setup_entry(
@@ -20,14 +38,13 @@ async def async_setup_entry(
     """Set up Smart Notify sensors."""
     coordinator: SmartNotifyCoordinator = hass.data[DOMAIN]["coordinator"]
     async_add_entities([
-        SmartNotifyPendingSensor(coordinator, entry),
-        SmartNotifyDeliveredTodaySensor(coordinator, entry),
-        SmartNotifyFailedTodaySensor(coordinator, entry),
+        SmartNotifySensor(coordinator, entry, sensor_type, name, value_fn)
+        for sensor_type, name, value_fn in _SENSOR_DEFINITIONS
     ])
 
 
 class SmartNotifySensor(CoordinatorEntity[SmartNotifyCoordinator], SensorEntity):
-    """Base Smart Notify diagnostic sensor."""
+    """Smart Notify diagnostic sensor."""
 
     _attr_has_entity_name = True
 
@@ -37,9 +54,11 @@ class SmartNotifySensor(CoordinatorEntity[SmartNotifyCoordinator], SensorEntity)
         entry: ConfigEntry,
         sensor_type: str,
         name: str,
+        value_fn: SensorValueFn,
     ) -> None:
         """Initialize sensor."""
         super().__init__(coordinator)
+        self._value_fn = value_fn
         self._attr_unique_id = f"{entry.entry_id}_{sensor_type}"
         self._attr_name = name
         self._attr_device_info = {
@@ -49,41 +68,7 @@ class SmartNotifySensor(CoordinatorEntity[SmartNotifyCoordinator], SensorEntity)
             "model": "Notification Router",
         }
 
-
-class SmartNotifyPendingSensor(SmartNotifySensor):
-    """Pending notification count."""
-
-    def __init__(self, coordinator: SmartNotifyCoordinator, entry: ConfigEntry) -> None:
-        """Initialize pending sensor."""
-        super().__init__(coordinator, entry, SENSOR_PENDING, "Pending")
-
     @property
     def native_value(self) -> int:
-        """Pending notification count."""
-        return self.coordinator.pending_count()
-
-
-class SmartNotifyDeliveredTodaySensor(SmartNotifySensor):
-    """Delivered today count."""
-
-    def __init__(self, coordinator: SmartNotifyCoordinator, entry: ConfigEntry) -> None:
-        """Initialize delivered sensor."""
-        super().__init__(coordinator, entry, SENSOR_DELIVERED_TODAY, "Delivered today")
-
-    @property
-    def native_value(self) -> int:
-        """Deliveries completed today."""
-        return self.coordinator.delivered_today()
-
-
-class SmartNotifyFailedTodaySensor(SmartNotifySensor):
-    """Failed today count."""
-
-    def __init__(self, coordinator: SmartNotifyCoordinator, entry: ConfigEntry) -> None:
-        """Initialize failed sensor."""
-        super().__init__(coordinator, entry, SENSOR_FAILED_TODAY, "Failed today")
-
-    @property
-    def native_value(self) -> int:
-        """Failed deliveries today."""
-        return self.coordinator.failed_today()
+        """Current sensor value."""
+        return self._value_fn(self.coordinator)

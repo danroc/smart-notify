@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
@@ -34,20 +35,21 @@ def _strategy_selector_options() -> list[selector.SelectOptionDict]:
     ]
 
 
-def _user_schema() -> vol.Schema:
-    """Return the user step schema."""
-    return vol.Schema({
-        vol.Required(CONF_PERSONS): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="person", multiple=True),
-        ),
+def _defaults_schema_fields(
+    defaults: Mapping[str, Any] | None = None,
+) -> dict[vol.Marker, Any]:
+    """Return schema fields for integration default settings."""
+    data = defaults or {}
+    return {
         vol.Required(
-            CONF_DEFAULT_STRATEGY, default=DEFAULT_STRATEGY
+            CONF_DEFAULT_STRATEGY,
+            default=data.get(CONF_DEFAULT_STRATEGY, DEFAULT_STRATEGY),
         ): selector.SelectSelector(
             selector.SelectSelectorConfig(options=_strategy_selector_options()),
         ),
         vol.Required(
             CONF_DEFAULT_TOLERANCE,
-            default=DEFAULT_TOLERANCE,
+            default=data.get(CONF_DEFAULT_TOLERANCE, DEFAULT_TOLERANCE),
         ): selector.NumberSelector(
             selector.NumberSelectorConfig(
                 min=0,
@@ -57,11 +59,13 @@ def _user_schema() -> vol.Schema:
         ),
         vol.Required(
             CONF_DEFAULT_EXPIRE_AFTER,
-            default=DEFAULT_EXPIRE_AFTER,
+            default=data.get(CONF_DEFAULT_EXPIRE_AFTER, DEFAULT_EXPIRE_AFTER),
         ): selector.TextSelector(),
         vol.Required(
             CONF_ARRIVAL_DEBOUNCE_SECONDS,
-            default=DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
+            default=data.get(
+                CONF_ARRIVAL_DEBOUNCE_SECONDS, DEFAULT_ARRIVAL_DEBOUNCE_SECONDS
+            ),
         ): selector.NumberSelector(
             selector.NumberSelectorConfig(
                 min=0,
@@ -71,9 +75,22 @@ def _user_schema() -> vol.Schema:
                 unit_of_measurement="seconds",
             ),
         ),
-        vol.Required(CONF_LOG_LEVEL, default="info"): selector.SelectSelector(
+        vol.Required(
+            CONF_LOG_LEVEL,
+            default=data.get(CONF_LOG_LEVEL, "info"),
+        ): selector.SelectSelector(
             selector.SelectSelectorConfig(options=["debug", "info", "warning"]),
         ),
+    }
+
+
+def _user_schema() -> vol.Schema:
+    """Return the user step schema."""
+    return vol.Schema({
+        vol.Required(CONF_PERSONS): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="person", multiple=True),
+        ),
+        **_defaults_schema_fields(),
     })
 
 
@@ -178,52 +195,7 @@ class SmartNotifyOptionsFlowHandler(config_entries.OptionsFlow):
         persons = self.config_entry.data.get(CONF_PERSONS, [])
         person_services = self.config_entry.data.get(CONF_PERSON_SERVICES, {})
         schema_dict: dict[vol.Marker, Any] = {
-            vol.Required(
-                CONF_DEFAULT_STRATEGY,
-                default=self.config_entry.data.get(
-                    CONF_DEFAULT_STRATEGY, DEFAULT_STRATEGY
-                ),
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(options=_strategy_selector_options()),
-            ),
-            vol.Required(
-                CONF_DEFAULT_TOLERANCE,
-                default=self.config_entry.data.get(
-                    CONF_DEFAULT_TOLERANCE, DEFAULT_TOLERANCE
-                ),
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0,
-                    step=50,
-                    mode=selector.NumberSelectorMode.BOX,
-                ),
-            ),
-            vol.Required(
-                CONF_DEFAULT_EXPIRE_AFTER,
-                default=self.config_entry.data.get(
-                    CONF_DEFAULT_EXPIRE_AFTER, DEFAULT_EXPIRE_AFTER
-                ),
-            ): selector.TextSelector(),
-            vol.Required(
-                CONF_ARRIVAL_DEBOUNCE_SECONDS,
-                default=self.config_entry.data.get(
-                    CONF_ARRIVAL_DEBOUNCE_SECONDS, DEFAULT_ARRIVAL_DEBOUNCE_SECONDS
-                ),
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0,
-                    max=600,
-                    step=5,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="seconds",
-                ),
-            ),
-            vol.Required(
-                CONF_LOG_LEVEL,
-                default=self.config_entry.data.get(CONF_LOG_LEVEL, "info"),
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(options=["debug", "info", "warning"]),
-            ),
+            **_defaults_schema_fields(self.config_entry.data),
         }
         for person in persons:
             schema_dict[

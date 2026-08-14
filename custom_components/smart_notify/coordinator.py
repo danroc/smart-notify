@@ -27,10 +27,15 @@ from .const import (
     ATTR_URL,
     DEFAULT_LEVEL,
     DOMAIN,
+    EVENT_DELIVERED,
+    EVENT_EXPIRED,
+    EVENT_FAILED,
+    EVENT_QUEUED,
+    EVENT_SENT,
     LOGGER_NAME,
 )
 from .delivery import DeliveryManager
-from .events import fire_delivered, fire_expired, fire_failed, fire_queued, fire_sent
+from .events import fire_event
 from .listeners import EventListener
 from .models import DeliveryRecord, NotificationPayload, SmartNotifyConfig
 from .queue import QueueManager
@@ -133,8 +138,9 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         params = self._build_strategy_params_from_payload(payload)
         recipients = self._resolver.resolve(payload.strategy, params, payload.persons)
 
-        fire_sent(
+        fire_event(
             self.hass,
+            EVENT_SENT,
             {
                 "notification_id": payload.id,
                 "strategy": payload.strategy,
@@ -149,8 +155,9 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         if strategy_queues_when_empty(payload.strategy):
             queued = await self._queue.enqueue(payload)
-            fire_queued(
+            fire_event(
                 self.hass,
+                EVENT_QUEUED,
                 {
                     "notification_id": queued.id,
                     "strategy": queued.strategy,
@@ -238,8 +245,9 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Update counters and fire events for a delivery attempt."""
         if record.success:
             self._increment_delivered()
-            fire_delivered(
+            fire_event(
                 self.hass,
+                EVENT_DELIVERED,
                 {
                     "notification_id": notification_id,
                     "recipients": recipients,
@@ -257,8 +265,9 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     ) -> None:
         """Update counters and fire events for a failed delivery."""
         self._increment_failed()
-        fire_failed(
+        fire_event(
             self.hass,
+            EVENT_FAILED,
             {
                 "notification_id": notification_id,
                 "error": error,
@@ -269,8 +278,9 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Expire stale notifications."""
         expired = await self._queue.expire_stale()
         for item in expired:
-            fire_expired(
+            fire_event(
                 self.hass,
+                EVENT_EXPIRED,
                 {
                     "notification_id": item.id,
                     "expired_at": dt_util.utcnow().isoformat(),
