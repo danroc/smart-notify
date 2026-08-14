@@ -51,7 +51,6 @@ async def test_person_arrival_flushes_queue_after_debounce(
         {
             "message": "Laundry",
             "strategy": "arrival",
-            "queue_if_no_candidate": True,
         },
         blocking=True,
     )
@@ -117,7 +116,6 @@ async def test_arrival_debounce_waits_for_second_person(
         {
             "message": "Laundry",
             "strategy": "arrival",
-            "queue_if_no_candidate": True,
         },
         blocking=True,
     )
@@ -217,7 +215,6 @@ async def test_zone_to_home_flushes_queue(
         {
             "message": "Laundry",
             "strategy": "arrival",
-            "queue_if_no_candidate": True,
         },
         blocking=True,
     )
@@ -270,7 +267,6 @@ async def test_failed_flush_does_not_retry(
         {
             "message": "Laundry",
             "strategy": "arrival",
-            "queue_if_no_candidate": True,
         },
         blocking=True,
     )
@@ -336,7 +332,6 @@ async def test_queued_persons_filter_survives_flush(
             "message": "Laundry",
             "strategy": "arrival",
             "persons": ["person.alice"],
-            "queue_if_no_candidate": True,
         },
         blocking=True,
     )
@@ -394,12 +389,10 @@ async def test_flush_unknown_strategy_marks_failed(
         title=None,
         message="Hello",
         strategy=strategy,
-        priority="normal",
         tag=None,
         payload={},
         created=now,
         expires=now + timedelta(hours=4),
-        metadata={},
     )
     await coordinator.queue_manager.enqueue(payload)
     assert coordinator.pending_count() == 1

@@ -35,12 +35,10 @@ def _payload(
         title="Title",
         message="Message",
         strategy="direct",
-        priority="normal",
         tag=tag,
         payload=payload if payload is not None else {"foo": "bar"},
         created=now,
         expires=now,
-        metadata={},
         actions=actions,
     )
 
@@ -70,12 +68,10 @@ def test_build_notify_data_omits_data_when_empty() -> None:
         title=None,
         message="Message",
         strategy="direct",
-        priority="normal",
         tag=None,
         payload={},
         created=now,
         expires=now,
-        metadata={},
     )
     data = DeliveryManager._build_notify_data(payload)
     assert data == {"message": "Message"}

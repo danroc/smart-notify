@@ -49,9 +49,9 @@ Other mobile-app options (e.g. `url`) go in the `data` field. Do not nest
 
 | Strategy  | Who is notified                                           | Empty set                                   |
 | --------- | --------------------------------------------------------- | ------------------------------------------- |
-| `direct`  | Everyone eligible                                         | Drop (unless `queue_if_no_candidate: true`) |
-| `home`    | People at home now                                        | Drop (unless `queue_if_no_candidate: true`) |
-| `away`    | People away now                                           | Drop (unless `queue_if_no_candidate: true`) |
+| `direct`  | Everyone eligible                                         | Drop                                        |
+| `home`    | People at home now                                        | Drop                                        |
+| `away`    | People away now                                           | Drop                                        |
 | `closest` | People within `tolerance` of the closest distance to home | Queue until someone has a usable location   |
 | `arrival` | People at home now                                        | Queue until someone arrives home            |
 

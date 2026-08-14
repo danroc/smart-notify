@@ -180,4 +180,3 @@ Non-`mobile_app` notify entities with `actions`: same fallback behavior (warning
 - iOS action categories, `REPLY` / text-input actions, action icons.
 - Non-`mobile_app` notify entities with rich payloads.
 - Telegram or other notify platforms.
-- Changing `priority` / `channels` payload wiring.

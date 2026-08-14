@@ -12,12 +12,10 @@ from homeassistant.util import dt as dt_util
 from .const import (
     DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
     DEFAULT_EXPIRE_AFTER,
-    DEFAULT_PRIORITY,
     DEFAULT_STRATEGY,
     DEFAULT_TOLERANCE,
     QUEUE_STATUS_PENDING,
 )
-from .util import default_queue_if_no_candidate
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,15 +26,11 @@ class NotificationPayload:
     title: str | None
     message: str
     strategy: str
-    priority: str
     tag: str | None
     payload: dict[str, Any]
     created: datetime
     expires: datetime
-    metadata: dict[str, Any]
     tolerance: int | None = None
-    queue_if_no_candidate: bool = False
-    channels: list[str] | None = None
     persons: list[str] | None = None
     actions: list[dict[str, Any]] | None = None
 
@@ -47,15 +41,11 @@ class NotificationPayload:
             "title": self.title,
             "message": self.message,
             "strategy": self.strategy,
-            "priority": self.priority,
             "tag": self.tag,
             "payload": self.payload,
             "created": self.created.isoformat(),
             "expires": self.expires.isoformat(),
-            "metadata": self.metadata,
             "tolerance": self.tolerance,
-            "queue_if_no_candidate": self.queue_if_no_candidate,
-            "channels": self.channels,
             "persons": self.persons,
             "actions": self.actions,
         }
@@ -64,24 +54,16 @@ class NotificationPayload:
     def from_dict(cls, data: dict[str, Any]) -> NotificationPayload:
         """Deserialize from storage."""
         strategy = data["strategy"]
-        if "queue_if_no_candidate" in data:
-            queue_if_no_candidate = bool(data["queue_if_no_candidate"])
-        else:
-            queue_if_no_candidate = default_queue_if_no_candidate(strategy)
         return cls(
             id=data["id"],
             title=data.get("title"),
             message=data["message"],
             strategy=strategy,
-            priority=data.get("priority", DEFAULT_PRIORITY),
             tag=data.get("tag"),
             payload=data.get("payload", {}),
             created=dt_util.parse_datetime(data["created"]) or dt_util.utcnow(),
             expires=dt_util.parse_datetime(data["expires"]) or dt_util.utcnow(),
-            metadata=data.get("metadata", {}),
             tolerance=data.get("tolerance"),
-            queue_if_no_candidate=queue_if_no_candidate,
-            channels=data.get("channels"),
             persons=data.get("persons"),
             actions=data.get("actions"),
         )

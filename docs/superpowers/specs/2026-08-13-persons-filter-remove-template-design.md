@@ -14,7 +14,7 @@ Callers can target one (or more) configured people on a send. Strategies still d
 - `tolerance` stays only on `closest` (band around the closest person, not around home).
 - Arrival / queue stays as today: persist when nobody matches, flush when someone enters `home`.
 - Per-person notify services stay a list of `notify.*` targets (companion app). No Telegram chat/thread config.
-- No `channels` field on send. `priority` / `channels` payload wiring stays out of scope.
+- No `channels` field on send.
 
 ## Behavior
 
@@ -28,7 +28,7 @@ Optional service field `persons`: a list of `person.*` entity IDs.
 | `persons: [person.daniel]` | Intersection of that list with configured persons |
 | `persons: [person.daniel, person.luiza]` | Intersection of that list with configured persons |
 
-Unknown or unconfigured entity IDs are dropped. If every ID is unknown, the candidate set is empty, the strategy returns `[]`, and existing `queue_if_no_candidate` behavior applies.
+Unknown or unconfigured entity IDs are dropped. If every ID is unknown, the candidate set is empty, the strategy returns `[]`, and strategy-specific queue behavior applies (`arrival` and `closest` queue; others drop).
 
 If `persons` is present, it must contain at least one string (empty list is invalid).
 
@@ -84,7 +84,7 @@ data:
 - Omit `persons` → same recipients as today.
 - `persons: [person.alice]` with two configured people and `everyone` → only Alice.
 - Unconfigured ID dropped; only configured IDs remain.
-- All IDs unconfigured + `queue_if_no_candidate: true` → queued.
+- All IDs unconfigured + `strategy: arrival` → queued.
 - `everyone_home` + Alice away + filter Alice → no immediate delivery (queue).
 - Queued notification with `persons: [person.alice]` still targets only Alice after flush.
 - Empty `persons: []` rejected by schema.
@@ -93,8 +93,6 @@ data:
 
 ## Out of scope
 
-- Telegram / `telegram_bot.send_message` / named channels.
-- Applying `channels` or `priority` to notify payloads.
+- Telegram / `telegram_bot.send_message`.
 - Presence radius or changing `closest` / `first_home` / `everyone_home`.
 - Top-level `group` / `image` / `url` / `actions` fields.
-- Changing default `queue_if_no_candidate` per strategy.

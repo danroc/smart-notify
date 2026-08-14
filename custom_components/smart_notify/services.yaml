@@ -1,19 +1,29 @@
 send:
   name: Send
-  description: Route a notification using Smart Notify strategies.
+  description: >-
+    Route a notification to the right people using presence and distance
+    strategies, with optional queueing when nobody matches.
   fields:
     message:
       required: true
+      description: Notification body text delivered to the notify target.
       example: Washing machine finished.
       selector:
         text:
     title:
       required: false
+      description: Optional notification title shown on the device.
       example: Laundry
       selector:
         text:
     strategy:
       required: false
+      description: >-
+        Who should receive the notification. Defaults to the integration's
+        configured default strategy. direct: everyone eligible; home: people at
+        home now; away: people away now; closest: people within tolerance of the
+        closest distance to home (queues when nobody has a usable location);
+        arrival: people at home now, otherwise queue until someone arrives.
       example: closest
       selector:
         select:
@@ -30,31 +40,30 @@ send:
               value: arrival
     tolerance:
       required: false
+      description: >-
+        Distance in meters used by the closest strategy. Everyone whose
+        distance to home is within this value of the closest person is
+        notified. Defaults to the integration's configured default tolerance.
       example: 500
       selector:
         number:
           min: 0
           step: 50
           mode: box
-    queue_if_no_candidate:
-      required: false
-      description: >-
-        Queue when nobody matches. Defaults to true for arrival and closest,
-        false for other strategies.
-      selector:
-        boolean:
     expire_after:
       required: false
+      description: >-
+        How long a queued notification is kept before it expires. Duration
+        shorthand such as 30m, 4h, or 1d. Defaults to the integration's
+        configured default expiration.
       example: 4h
-      selector:
-        text:
-    priority:
-      required: false
-      example: normal
       selector:
         text:
     tag:
       required: false
+      description: >-
+        Tag passed to the mobile app notify payload. Use to replace or group
+        related notifications on the device.
       example: laundry
       selector:
         text:
@@ -62,20 +71,17 @@ send:
       required: false
       description: >-
         Action buttons for the Companion app (long-press on iOS). Handled via
-        mobile_app_notification_action automations.
+        mobile_app_notification_action automations. Do not nest actions inside
+        the data field.
       example:
         - action: ACK
           title: Got it
     data:
       required: false
-      selector:
-        object:
-    channels:
-      required: false
-      selector:
-        object:
-    metadata:
-      required: false
+      description: >-
+        Extra mobile-app notify options merged into the delivered payload (for
+        example url, clickAction, or group). Do not put actions here; use the
+        top-level actions field instead.
       selector:
         object:
     persons:

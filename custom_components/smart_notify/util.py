@@ -96,7 +96,7 @@ def get_person_states(hass: HomeAssistant, person_ids: list[str]) -> list[State]
     return states
 
 
-def default_queue_if_no_candidate(strategy: str) -> bool:
+def strategy_queues_when_empty(strategy: str) -> bool:
     """Return whether an empty recipient set should queue for this strategy.
 
     Arrival waits until someone gets home. Closest waits until someone has a

@@ -17,12 +17,10 @@ def _payload(persons: list[str] | None = None) -> NotificationPayload:
         title="Title",
         message="Message",
         strategy="direct",
-        priority="normal",
         tag=None,
         payload={},
         created=now,
         expires=now,
-        metadata={},
         persons=persons,
     )
 
@@ -58,22 +56,6 @@ def test_payload_from_dict_ignores_legacy_template_field() -> None:
     data["template"] = "{{ states.person | list }}"
     restored = NotificationPayload.from_dict(data)
     assert not hasattr(restored, "template")
-
-
-def test_payload_from_dict_queue_default_follows_strategy() -> None:
-    """Legacy queue entries without the flag follow the strategy default."""
-    data = _payload().to_dict()
-    data.pop("queue_if_no_candidate", None)
-    assert NotificationPayload.from_dict(data).queue_if_no_candidate is False
-
-    data["strategy"] = "home"
-    assert NotificationPayload.from_dict(data).queue_if_no_candidate is False
-
-    data["strategy"] = "arrival"
-    assert NotificationPayload.from_dict(data).queue_if_no_candidate is True
-
-    data["strategy"] = "closest"
-    assert NotificationPayload.from_dict(data).queue_if_no_candidate is True
 
 
 def test_payload_from_dict_keeps_stored_strategy() -> None:

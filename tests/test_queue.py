@@ -34,12 +34,10 @@ def _payload(notification_id: str, expires: timedelta) -> NotificationPayload:
         title="Test",
         message="Hello",
         strategy="closest",
-        priority="normal",
         tag=None,
         payload={},
         created=now,
         expires=now + expires,
-        metadata={},
     )
 
 

@@ -16,7 +16,7 @@ from custom_components.smart_notify.const import (
     STRATEGY_LABELS,
 )
 from custom_components.smart_notify.util import (
-    default_queue_if_no_candidate,
+    strategy_queues_when_empty,
     is_eligible_person,
     parse_duration,
     parse_expire_after,
@@ -54,13 +54,13 @@ def test_is_eligible_person() -> None:
     assert not is_eligible_person(State("person.alice", STATE_UNKNOWN))
 
 
-def test_default_queue_if_no_candidate() -> None:
+def test_strategy_queues_when_empty() -> None:
     """Arrival and closest wait; snapshot strategies drop."""
-    assert default_queue_if_no_candidate("arrival") is True
-    assert default_queue_if_no_candidate("closest") is True
-    assert default_queue_if_no_candidate("direct") is False
-    assert default_queue_if_no_candidate("home") is False
-    assert default_queue_if_no_candidate("away") is False
+    assert strategy_queues_when_empty("arrival") is True
+    assert strategy_queues_when_empty("closest") is True
+    assert strategy_queues_when_empty("direct") is False
+    assert strategy_queues_when_empty("home") is False
+    assert strategy_queues_when_empty("away") is False
 
 
 def test_strategy_labels_cover_choices() -> None:

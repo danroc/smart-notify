@@ -318,7 +318,6 @@ data:
   message: Washing machine finished.
   strategy: closest
   tolerance: 500
-  queue_if_no_candidate: true
   expire_after: "4h"
 ```
 

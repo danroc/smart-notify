@@ -25,25 +25,16 @@ ATTR_TITLE: Final = "title"
 ATTR_MESSAGE: Final = "message"
 ATTR_STRATEGY: Final = "strategy"
 ATTR_TOLERANCE: Final = "tolerance"
-ATTR_QUEUE_IF_NO_CANDIDATE: Final = "queue_if_no_candidate"
 ATTR_EXPIRE_AFTER: Final = "expire_after"
-ATTR_PRIORITY: Final = "priority"
 ATTR_TAG: Final = "tag"
 ATTR_ACTIONS: Final = "actions"
 ATTR_DATA: Final = "data"
-ATTR_CHANNELS: Final = "channels"
-ATTR_METADATA: Final = "metadata"
 ATTR_PERSONS: Final = "persons"
 
 DEFAULT_STRATEGY: Final = "closest"
 DEFAULT_TOLERANCE: Final = 500
 DEFAULT_EXPIRE_AFTER: Final = "4h"
-DEFAULT_PRIORITY: Final = "normal"
 DEFAULT_ARRIVAL_DEBOUNCE_SECONDS: Final = 30
-
-PRIORITY_NORMAL: Final = "normal"
-PRIORITY_HIGH: Final = "high"
-PRIORITY_LOW: Final = "low"
 
 QUEUE_STATUS_PENDING: Final = "pending"
 QUEUE_STATUS_DELIVERED: Final = "delivered"

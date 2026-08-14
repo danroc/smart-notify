@@ -24,7 +24,7 @@ If two or more people share the minimum distance, all of them are selected when 
 
 ### Ineligible / empty
 
-People without latitude/longitude are skipped (unchanged). If nobody has a usable distance, return `[]` (queueing / `queue_if_no_candidate` unchanged).
+People without latitude/longitude are skipped (unchanged). If nobody has a usable distance, return `[]` (`arrival` and `closest` queue when empty; other strategies drop).
 
 ## API / config
 
@@ -52,4 +52,3 @@ People without latitude/longitude are skipped (unchanged). If nobody has a usabl
 
 - Changing how distance is computed.
 - Aliasing or deprecating `closest_with_tolerance`.
-- Applying unused fields (`channels`, `priority`) in notify payloads.

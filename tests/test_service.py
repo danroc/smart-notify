@@ -12,6 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.smart_notify.const import DOMAIN
 from custom_components.smart_notify.models import DeliveryRecord
+from custom_components.smart_notify.services import SERVICE_SEND_SCHEMA
 from tests.conftest import make_config_entry
 
 
@@ -28,6 +29,21 @@ async def test_service_validation_requires_message(
             {},
             blocking=True,
         )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("queue_if_no_candidate", True),
+        ("channels", ["mobile_app"]),
+        ("metadata", {"source": "automation"}),
+        ("priority", "high"),
+    ),
+)
+def test_service_schema_rejects_removed_fields(field: str, value: object) -> None:
+    """Removed service fields are rejected by the schema."""
+    with pytest.raises(vol.Invalid):
+        SERVICE_SEND_SCHEMA({"message": "Hello", field: value})
 
 
 @pytest.mark.asyncio
@@ -179,11 +195,11 @@ async def test_service_queues_when_filtered_person_is_away(
 
 
 @pytest.mark.asyncio
-async def test_service_all_unconfigured_persons_queues_when_flag_set(
+async def test_service_all_unconfigured_persons_drops_with_direct(
     hass: HomeAssistant,
     smart_notify_config_entry: MockConfigEntry,
 ) -> None:
-    """Unknown persons queue only when queue_if_no_candidate is true."""
+    """Unknown persons are dropped when using a non-queueing strategy."""
     hass.states.async_set(
         "person.alice",
         "home",
@@ -196,12 +212,11 @@ async def test_service_all_unconfigured_persons_queues_when_flag_set(
             "message": "Hello",
             "strategy": "direct",
             "persons": ["person.carol"],
-            "queue_if_no_candidate": True,
         },
         blocking=True,
     )
     coordinator = hass.data[DOMAIN]["coordinator"]
-    assert coordinator.pending_count() == 1
+    assert coordinator.pending_count() == 0
 
 
 @pytest.mark.asyncio
@@ -240,56 +255,6 @@ async def test_away_does_not_queue_by_default(
         DOMAIN,
         "send",
         {"message": "Hello", "strategy": "away"},
-        blocking=True,
-    )
-    coordinator = hass.data[DOMAIN]["coordinator"]
-    assert coordinator.pending_count() == 0
-
-
-@pytest.mark.asyncio
-async def test_home_queues_when_flag_true(
-    hass: HomeAssistant,
-    smart_notify_config_entry: MockConfigEntry,
-) -> None:
-    """Explicit queue_if_no_candidate still queues a home snapshot."""
-    hass.states.async_set(
-        "person.alice",
-        "not_home",
-        {"latitude": 40.0, "longitude": -74.0},
-    )
-    await hass.services.async_call(
-        DOMAIN,
-        "send",
-        {
-            "message": "Hello",
-            "strategy": "home",
-            "queue_if_no_candidate": True,
-        },
-        blocking=True,
-    )
-    coordinator = hass.data[DOMAIN]["coordinator"]
-    assert coordinator.pending_count() == 1
-
-
-@pytest.mark.asyncio
-async def test_arrival_does_not_queue_when_flag_false(
-    hass: HomeAssistant,
-    smart_notify_config_entry: MockConfigEntry,
-) -> None:
-    """Explicit false disables arrival queueing."""
-    hass.states.async_set(
-        "person.alice",
-        "not_home",
-        {"latitude": 40.0, "longitude": -74.0},
-    )
-    await hass.services.async_call(
-        DOMAIN,
-        "send",
-        {
-            "message": "Hello",
-            "strategy": "arrival",
-            "queue_if_no_candidate": False,
-        },
         blocking=True,
     )
     coordinator = hass.data[DOMAIN]["coordinator"]

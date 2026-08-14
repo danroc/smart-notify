@@ -21,7 +21,7 @@ from .queue import QueueManager
 from .recipient import RecipientResolver
 from .storage import SmartNotifyStorage
 from .util import (
-    default_queue_if_no_candidate,
+    strategy_queues_when_empty,
     generate_id,
     parse_expire_after,
 )
@@ -131,7 +131,7 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.async_set_updated_data(self._build_data())
             return
 
-        if payload.queue_if_no_candidate:
+        if strategy_queues_when_empty(payload.strategy):
             queued = await self._queue.enqueue(payload)
             fire_queued(
                 self.hass,
@@ -145,7 +145,7 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.async_set_updated_data(self._build_data())
             return
 
-        _LOGGER.debug("No recipients and queue_if_no_candidate is false")
+        _LOGGER.debug("No recipients and strategy does not queue")
         self.async_set_updated_data(self._build_data())
 
     async def _async_on_person_arrival(
@@ -277,9 +277,6 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._config.default_expire_after,
         )
         strategy = service_data.get("strategy", self._config.default_strategy)
-        queue_if_no_candidate = service_data.get("queue_if_no_candidate")
-        if queue_if_no_candidate is None:
-            queue_if_no_candidate = default_queue_if_no_candidate(strategy)
         notify_data = dict(service_data.get(ATTR_DATA) or {})
         if ATTR_ACTIONS in notify_data:
             _LOGGER.debug(
@@ -291,16 +288,12 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             title=service_data.get("title"),
             message=service_data["message"],
             strategy=strategy,
-            priority=service_data.get("priority", "normal"),
             tag=service_data.get("tag"),
             payload=notify_data,
             actions=service_data.get(ATTR_ACTIONS),
             created=now,
             expires=parse_expire_after(str(expire_after), now),
-            metadata=service_data.get("metadata", {}),
             tolerance=service_data.get("tolerance", self._config.default_tolerance),
-            queue_if_no_candidate=queue_if_no_candidate,
-            channels=service_data.get("channels"),
             persons=service_data.get("persons"),
         )
 
