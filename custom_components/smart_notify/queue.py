@@ -98,9 +98,4 @@ class QueueManager:
 
     async def mark_failed(self, notification_id: str) -> None:
         """Remove a failed notification from the queue."""
-        queue = [
-            item for item in self._storage.get_queue() if item.id != notification_id
-        ]
-        self._storage.set_queue(queue)
-        await self._storage.async_save()
-        _LOGGER.debug("Removed failed notification %s from queue", notification_id)
+        await self.remove(notification_id)

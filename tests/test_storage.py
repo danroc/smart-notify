@@ -30,5 +30,5 @@ async def test_storage_load_and_save(hass: MagicMock) -> None:
     )
     storage.set_configuration(config)
     await storage.async_save()
-    loaded = storage.get_configuration()
+    loaded = SmartNotifyConfig.from_entry_data(storage.as_dict()["configuration"])
     assert loaded.persons == ["person.alice"]

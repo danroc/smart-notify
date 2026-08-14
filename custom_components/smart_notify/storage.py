@@ -52,10 +52,6 @@ class SmartNotifyStorage:
         """Store integration configuration."""
         self._data["configuration"] = config.to_dict()
 
-    def get_configuration(self) -> SmartNotifyConfig:
-        """Return stored configuration."""
-        return SmartNotifyConfig.from_entry_data(self._data.get("configuration", {}))
-
     def get_queue(self) -> list[QueuedNotification]:
         """Return queued notifications."""
         return [

@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import Any
 
 from homeassistant.const import (
     ATTR_LATITUDE,
@@ -103,8 +102,3 @@ def strategy_queues_when_empty(strategy: str) -> bool:
     usable location. Other strategies are snapshots of who matches now.
     """
     return strategy in STRATEGIES_QUEUE_BY_DEFAULT
-
-
-def build_service_params(payload: dict[str, Any]) -> dict[str, Any]:
-    """Extract strategy parameters from a service call."""
-    return {key: value for key, value in payload.items() if value is not None}

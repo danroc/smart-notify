@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any
 
-from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
+from homeassistant.core import HomeAssistant, callback
 
 from .const import (
     EVENT_DELIVERED,
@@ -45,10 +44,3 @@ def fire_expired(hass: HomeAssistant, data: dict[str, Any]) -> None:
 def fire_failed(hass: HomeAssistant, data: dict[str, Any]) -> None:
     """Fire smart_notify_failed."""
     _fire(hass, EVENT_FAILED, data)
-
-
-def async_listen_sent(
-    hass: HomeAssistant, callback_func: Callable[[Event], None]
-) -> CALLBACK_TYPE:
-    """Listen for smart_notify_sent events."""
-    return hass.bus.async_listen(EVENT_SENT, callback_func)

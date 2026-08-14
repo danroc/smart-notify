@@ -32,7 +32,7 @@ from .const import (
 from .delivery import DeliveryManager
 from .events import fire_delivered, fire_expired, fire_failed, fire_queued, fire_sent
 from .listeners import EventListener
-from .models import NotificationPayload, SmartNotifyConfig
+from .models import DeliveryRecord, NotificationPayload, SmartNotifyConfig
 from .queue import QueueManager
 from .recipient import RecipientResolver
 from .storage import SmartNotifyStorage
@@ -208,41 +208,15 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     item.strategy, params, item.payload.persons
                 )
             except ValueError as err:
-                await self._queue.mark_failed(item.id)
-                self._increment_failed()
-                fire_failed(
-                    self.hass,
-                    {
-                        "notification_id": item.id,
-                        "error": str(err),
-                    },
-                )
+                await self._queue.remove(item.id)
+                self._record_delivery_failure(item.id, str(err))
                 continue
             if not recipients:
                 continue
             await self._queue.mark_attempt(item.id)
             record = await self._delivery.deliver(item.payload, recipients)
-            if record.success:
-                await self._queue.remove(item.id)
-                self._increment_delivered()
-                fire_delivered(
-                    self.hass,
-                    {
-                        "notification_id": item.id,
-                        "recipients": recipients,
-                        "services": record.services,
-                    },
-                )
-            else:
-                await self._queue.mark_failed(item.id)
-                self._increment_failed()
-                fire_failed(
-                    self.hass,
-                    {
-                        "notification_id": item.id,
-                        "error": record.error,
-                    },
-                )
+            await self._queue.remove(item.id)
+            self._record_delivery_result(item.id, recipients, record)
 
         self.async_set_updated_data(self._build_data())
 
@@ -253,25 +227,43 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     ) -> None:
         """Deliver a notification immediately."""
         record = await self._delivery.deliver(payload, recipients)
+        self._record_delivery_result(payload.id, recipients, record)
+
+    def _record_delivery_result(
+        self,
+        notification_id: str,
+        recipients: list[str],
+        record: DeliveryRecord,
+    ) -> None:
+        """Update counters and fire events for a delivery attempt."""
         if record.success:
             self._increment_delivered()
             fire_delivered(
                 self.hass,
                 {
-                    "notification_id": payload.id,
+                    "notification_id": notification_id,
                     "recipients": recipients,
                     "services": record.services,
                 },
             )
-        else:
-            self._increment_failed()
-            fire_failed(
-                self.hass,
-                {
-                    "notification_id": payload.id,
-                    "error": record.error,
-                },
-            )
+            return
+
+        self._record_delivery_failure(notification_id, record.error)
+
+    def _record_delivery_failure(
+        self,
+        notification_id: str,
+        error: str | None,
+    ) -> None:
+        """Update counters and fire events for a failed delivery."""
+        self._increment_failed()
+        fire_failed(
+            self.hass,
+            {
+                "notification_id": notification_id,
+                "error": error,
+            },
+        )
 
     async def _async_expire_notifications(self) -> None:
         """Expire stale notifications."""
