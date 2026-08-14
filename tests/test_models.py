@@ -113,7 +113,6 @@ def test_queued_notification_from_dict_follows_payload_strategy() -> None:
         "strategy": "first_home",
         "payload": payload_data,
         "status": "pending",
-        "delivery_attempts": 0,
     })
     assert restored.strategy == "first_home"
     assert restored.payload.strategy == "first_home"

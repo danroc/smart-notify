@@ -219,7 +219,6 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 continue
             if not recipients:
                 continue
-            await self._queue.mark_attempt(item.id)
             record = await self._delivery.deliver(item.payload, recipients)
             await self._queue.remove(item.id)
             self._record_delivery_result(item.id, recipients, record)

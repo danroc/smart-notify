@@ -106,7 +106,6 @@ class QueuedNotification:
     strategy: str
     payload: NotificationPayload
     status: str = QUEUE_STATUS_PENDING
-    delivery_attempts: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dictionary."""
@@ -117,7 +116,6 @@ class QueuedNotification:
             "strategy": self.strategy,
             "payload": self.payload.to_dict(),
             "status": self.status,
-            "delivery_attempts": self.delivery_attempts,
         }
 
     @classmethod
@@ -131,7 +129,6 @@ class QueuedNotification:
             strategy=payload.strategy,
             payload=payload,
             status=data.get("status", QUEUE_STATUS_PENDING),
-            delivery_attempts=data.get("delivery_attempts", 0),
         )
 
 

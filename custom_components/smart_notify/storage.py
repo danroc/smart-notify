@@ -13,13 +13,41 @@ from .models import QueuedNotification
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 
+_LEGACY_STORAGE_KEYS = frozenset({"configuration", "last_deliveries", "errors"})
+
+
+def _normalize_storage_data(stored: object) -> dict[str, Any]:
+    """Return queue-only storage data."""
+    if not isinstance(stored, dict):
+        return {"queue": []}
+    queue = stored.get("queue", [])
+    if not isinstance(queue, list):
+        queue = []
+    return {"queue": queue}
+
+
+class _SmartNotifyStore(Store[dict[str, Any]]):
+    """Store with migration to queue-only persistence."""
+
+    async def _async_migrate_func(
+        self,
+        old_major_version: int,
+        old_minor_version: int,
+        old_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Drop legacy mirrored config and delivery history keys."""
+        del old_minor_version
+        if old_major_version < STORAGE_VERSION:
+            return _normalize_storage_data(old_data)
+        return old_data
+
 
 class SmartNotifyStorage:
     """Manage Smart Notify persistent queue data."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialize storage."""
-        self._store = Store[dict[str, Any]](
+        self._store = _SmartNotifyStore(
             hass,
             STORAGE_VERSION,
             STORAGE_KEY,
@@ -34,11 +62,17 @@ class SmartNotifyStorage:
         if stored is None:
             _LOGGER.debug("No existing storage found, using defaults")
             return
-        self._data["queue"] = stored.get("queue", [])
+
+        normalized = _normalize_storage_data(stored)
+        self._data = normalized
         _LOGGER.debug(
             "Loaded storage with %d queued notifications",
             len(self._data["queue"]),
         )
+
+        if isinstance(stored, dict) and _LEGACY_STORAGE_KEYS.intersection(stored):
+            _LOGGER.info("Pruning legacy Smart Notify storage keys")
+            await self.async_save()
 
     async def async_save(self) -> None:
         """Persist queue data to disk."""

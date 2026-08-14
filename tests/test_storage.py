@@ -22,6 +22,21 @@ async def test_storage_migration(hass: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
+async def test_store_migrates_from_version_1(hass: MagicMock) -> None:
+    """Store migration drops legacy keys when upgrading from v1."""
+    store = SmartNotifyStorage(hass)._store
+    migrated = await store._async_migrate_func(
+        1,
+        1,
+        {
+            "configuration": {"persons": ["person.alice"]},
+            "queue": [],
+        },
+    )
+    assert migrated == {"queue": []}
+
+
+@pytest.mark.asyncio
 async def test_storage_load_and_save(hass: MagicMock) -> None:
     """Storage round-trips queue data."""
     storage = SmartNotifyStorage(hass)
@@ -52,8 +67,8 @@ async def test_storage_load_and_save(hass: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_storage_load_ignores_legacy_keys(hass: MagicMock) -> None:
-    """Legacy storage keys are dropped when loading queue data."""
+async def test_storage_load_prunes_legacy_keys(hass: MagicMock) -> None:
+    """Legacy storage keys are dropped and rewritten on load."""
     storage = SmartNotifyStorage(hass)
     storage._store.async_load = AsyncMock(
         return_value={
@@ -63,7 +78,9 @@ async def test_storage_load_ignores_legacy_keys(hass: MagicMock) -> None:
             "queue": [],
         }
     )
+    storage._store.async_save = AsyncMock()
 
     await storage.async_load()
 
     assert storage.as_dict() == {"queue": []}
+    storage._store.async_save.assert_awaited_once_with({"queue": []})

@@ -8,7 +8,7 @@ from typing import Final
 DOMAIN: Final = "smart_notify"
 LOGGER_NAME: Final = "custom_components.smart_notify"
 
-STORAGE_VERSION: Final = 1
+STORAGE_VERSION: Final = 2
 STORAGE_KEY: Final = "smart_notify"
 
 CONF_PERSONS: Final = "persons"

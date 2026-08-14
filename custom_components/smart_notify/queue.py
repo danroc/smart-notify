@@ -43,7 +43,6 @@ class QueueManager:
             strategy=payload.strategy,
             payload=payload,
             status=QUEUE_STATUS_PENDING,
-            delivery_attempts=0,
         )
         queue = self._storage.get_queue()
         queue.append(queued)
@@ -60,17 +59,6 @@ class QueueManager:
         self._storage.set_queue(queue)
         await self._storage.async_save()
         _LOGGER.debug("Removed notification %s from queue", notification_id)
-
-    async def mark_attempt(self, notification_id: str) -> None:
-        """Increment delivery attempts for a queued notification."""
-        queue = self._storage.get_queue()
-        updated: list[QueuedNotification] = []
-        for item in queue:
-            if item.id == notification_id:
-                item.delivery_attempts += 1
-            updated.append(item)
-        self._storage.set_queue(updated)
-        await self._storage.async_save()
 
     async def expire_stale(
         self, now: datetime | None = None
@@ -95,7 +83,3 @@ class QueueManager:
             self._storage.set_queue(updated)
             await self._storage.async_save()
         return expired_items
-
-    async def mark_failed(self, notification_id: str) -> None:
-        """Remove a failed notification from the queue."""
-        await self.remove(notification_id)
