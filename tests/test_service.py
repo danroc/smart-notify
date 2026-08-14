@@ -348,6 +348,7 @@ async def test_service_accepts_flat_mobile_fields(
             },
             blocking=True,
         )
+    assert deliver.await_args is not None
     payload = deliver.await_args.args[0]
     assert payload.url == "https://example.com"
     assert payload.group == "alerts"
@@ -402,6 +403,7 @@ async def test_service_accepts_top_level_actions(
             },
             blocking=True,
         )
+    assert deliver.await_args is not None
     payload = deliver.await_args.args[0]
     assert payload.actions == [{"action": "ACK", "title": "Got it"}]
 

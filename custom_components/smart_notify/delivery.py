@@ -165,7 +165,7 @@ class DeliveryManager:
         if payload.title:
             data["title"] = payload.title
 
-        notify_data = {
+        notify_data: dict[str, Any] = {
             key: value
             for key, value in (
                 ("group", payload.group),

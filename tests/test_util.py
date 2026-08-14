@@ -16,10 +16,10 @@ from custom_components.smart_notify.const import (
     STRATEGY_LABELS,
 )
 from custom_components.smart_notify.util import (
-    strategy_queues_when_empty,
     is_eligible_person,
     parse_duration,
     parse_expire_after,
+    strategy_queues_when_empty,
 )
 
 

@@ -42,7 +42,9 @@ class StrategyRegistry:
         """Initialize an empty registry."""
         self._strategies: dict[str, type[Strategy]] = {}
 
-    def register(self, strategy_cls: type[Strategy]) -> type[Strategy]:
+    def register[TStrategy: Strategy](
+        self, strategy_cls: type[TStrategy]
+    ) -> type[TStrategy]:
         """Register a strategy class."""
         self._strategies[strategy_cls.name] = strategy_cls
         return strategy_cls
@@ -62,6 +64,8 @@ class StrategyRegistry:
 registry = StrategyRegistry()
 
 
-def register_strategy(strategy_cls: type[Strategy]) -> type[Strategy]:
+def register_strategy[TStrategy: Strategy](
+    strategy_cls: type[TStrategy],
+) -> type[TStrategy]:
     """Decorator to register a strategy implementation."""
     return registry.register(strategy_cls)
