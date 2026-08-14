@@ -10,7 +10,6 @@ from homeassistant.util import dt as dt_util
 
 from custom_components.smart_notify.delivery import DeliveryManager
 from custom_components.smart_notify.models import NotificationPayload, SmartNotifyConfig
-from custom_components.smart_notify.storage import SmartNotifyStorage
 
 LEGACY_MOBILE_APP_SERVICE = "mobile_app_daniel_iphone"
 
@@ -26,8 +25,7 @@ def delivery_manager(mock_hass: MagicMock) -> DeliveryManager:
         persons=["person.alice"],
         person_services={"person.alice": ["notify.mobile_app_alice"]},
     )
-    storage = SmartNotifyStorage(mock_hass)
-    return DeliveryManager(mock_hass, config, storage)
+    return DeliveryManager(mock_hass, config)
 
 
 def _payload(**overrides: object) -> NotificationPayload:
@@ -117,7 +115,6 @@ async def test_delivery_legacy_includes_actions(
     """Legacy notify services receive actions in data.actions."""
     mock_hass.services.has_service.return_value = True
     mock_hass.services.async_call = AsyncMock()
-    delivery_manager._storage.async_save = AsyncMock()
     await delivery_manager.deliver(
         _payload(actions=[{"action": "ACK", "title": "Got it"}]),
         ["person.alice"],
@@ -137,7 +134,6 @@ async def test_delivery_calls_legacy_notify_service(
     """Deliver through legacy notify services when registered."""
     mock_hass.services.has_service.return_value = True
     mock_hass.services.async_call = AsyncMock()
-    delivery_manager._storage.async_save = AsyncMock()
     record = await delivery_manager.deliver(_payload(), ["person.alice"])
     assert record.success is True
     mock_hass.services.async_call.assert_awaited_once()
@@ -145,8 +141,6 @@ async def test_delivery_calls_legacy_notify_service(
     assert call_args is not None
     assert call_args.args[0] == "notify"
     assert call_args.args[1] == "mobile_app_alice"
-    assert delivery_manager._storage._data["last_deliveries"]
-    delivery_manager._storage.async_save.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -161,8 +155,6 @@ async def test_delivery_calls_notify_send_message_for_entity(
     mock_hass.services.has_service.return_value = False
     mock_hass.states.get.return_value = MagicMock()
     mock_hass.services.async_call = AsyncMock()
-    delivery_manager._storage.async_save = AsyncMock()
-
     record = await delivery_manager.deliver(
         _payload(tag=None, url=None, group=None),
         ["person.alice"],
@@ -252,8 +244,6 @@ async def test_delivery_entity_with_actions_uses_legacy_service(
     mock_hass.services.has_service.side_effect = _has_legacy_mobile_app_service
     mock_hass.states.get.return_value = MagicMock()
     mock_hass.services.async_call = AsyncMock()
-    delivery_manager._storage.async_save = AsyncMock()
-
     with patch.object(
         delivery_manager,
         "_resolve_legacy_mobile_app_service",
@@ -287,8 +277,6 @@ async def test_delivery_entity_with_level_only_uses_legacy_service(
     mock_hass.services.has_service.side_effect = _has_legacy_mobile_app_service
     mock_hass.states.get.return_value = MagicMock()
     mock_hass.services.async_call = AsyncMock()
-    delivery_manager._storage.async_save = AsyncMock()
-
     with patch.object(
         delivery_manager,
         "_resolve_legacy_mobile_app_service",
@@ -317,8 +305,6 @@ async def test_delivery_entity_with_actions_falls_back_to_plain_send_message(
     mock_hass.services.has_service.return_value = False
     mock_hass.states.get.return_value = MagicMock()
     mock_hass.services.async_call = AsyncMock()
-    delivery_manager._storage.async_save = AsyncMock()
-
     with patch.object(
         delivery_manager,
         "_resolve_legacy_mobile_app_service",
@@ -351,8 +337,6 @@ async def test_delivery_fails_when_target_missing(
     mock_hass.services.has_service.return_value = False
     mock_hass.states.get.return_value = None
     mock_hass.services.async_call = AsyncMock()
-    delivery_manager._storage.async_save = AsyncMock()
-
     record = await delivery_manager.deliver(_payload(), ["person.alice"])
 
     assert record.success is False
@@ -371,7 +355,6 @@ async def test_partial_delivery_counts_as_success(
     delivery_manager._config.person_services = {
         "person.alice": ["notify.ok", "notify.bad"],
     }
-    delivery_manager._storage.async_save = AsyncMock()
     mock_hass.services.has_service.return_value = True
 
     async def _call(

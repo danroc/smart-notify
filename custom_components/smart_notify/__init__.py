@@ -34,8 +34,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     storage = SmartNotifyStorage(hass)
     coordinator = SmartNotifyCoordinator(hass, smart_config, storage)
     await coordinator.async_setup()
-    storage.set_configuration(smart_config)
-    await storage.async_save()
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN]["coordinator"] = coordinator
@@ -66,4 +64,3 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
     smart_config = SmartNotifyConfig.from_entry_data({**entry.data, **entry.options})
     await coordinator.async_update_config(smart_config)
     configure_logging(smart_config.log_level)
-    await coordinator.storage.async_save()

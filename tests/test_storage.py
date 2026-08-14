@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from datetime import timedelta
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from homeassistant.util import dt as dt_util
 
 from custom_components.smart_notify.const import STORAGE_VERSION
-from custom_components.smart_notify.models import SmartNotifyConfig
+from custom_components.smart_notify.models import NotificationPayload
+from custom_components.smart_notify.queue import QueueManager
 from custom_components.smart_notify.storage import SmartNotifyStorage
 
 
@@ -20,15 +23,47 @@ async def test_storage_migration(hass: MagicMock) -> None:
 
 @pytest.mark.asyncio
 async def test_storage_load_and_save(hass: MagicMock) -> None:
-    """Storage round-trips configuration and queue data."""
+    """Storage round-trips queue data."""
     storage = SmartNotifyStorage(hass)
     await storage.async_load()
 
-    config = SmartNotifyConfig(
-        persons=["person.alice"],
-        person_services={"person.alice": ["notify.mobile_app_alice"]},
+    now = dt_util.utcnow()
+    payload = NotificationPayload(
+        id="queued-1",
+        title="Test",
+        message="Hello",
+        strategy="arrival",
+        tag=None,
+        level="normal",
+        group=None,
+        image=None,
+        url=None,
+        created=now,
+        expires=now + timedelta(hours=1),
     )
-    storage.set_configuration(config)
+    queue = QueueManager(storage)
+    await queue.enqueue(payload)
     await storage.async_save()
-    loaded = SmartNotifyConfig.from_entry_data(storage.as_dict()["configuration"])
-    assert loaded.persons == ["person.alice"]
+
+    reloaded = SmartNotifyStorage(hass)
+    await reloaded.async_load()
+    assert len(reloaded.get_queue()) == 1
+    assert reloaded.get_queue()[0].id == "queued-1"
+
+
+@pytest.mark.asyncio
+async def test_storage_load_ignores_legacy_keys(hass: MagicMock) -> None:
+    """Legacy storage keys are dropped when loading queue data."""
+    storage = SmartNotifyStorage(hass)
+    storage._store.async_load = AsyncMock(
+        return_value={
+            "configuration": {"persons": ["person.alice"]},
+            "last_deliveries": [{"notification_id": "old"}],
+            "errors": [{"notification_id": "old"}],
+            "queue": [],
+        }
+    )
+
+    await storage.async_load()
+
+    assert storage.as_dict() == {"queue": []}

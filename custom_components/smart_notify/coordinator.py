@@ -65,7 +65,7 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._storage = storage
         self._resolver = RecipientResolver(hass, config.persons)
         self._queue = QueueManager(storage)
-        self._delivery = DeliveryManager(hass, config, storage)
+        self._delivery = DeliveryManager(hass, config)
         self._listener = EventListener(hass, config.persons)
         self._delivered_today = 0
         self._failed_today = 0
@@ -125,7 +125,6 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._config = config
         self._resolver = RecipientResolver(self.hass, config.persons)
         self._delivery.update_config(config)
-        self._storage.set_configuration(config)
 
     async def async_update_config(self, config: SmartNotifyConfig) -> None:
         """Update configuration and refresh person listeners."""

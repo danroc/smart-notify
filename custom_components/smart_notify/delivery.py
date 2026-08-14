@@ -13,7 +13,6 @@ from homeassistant.util import slugify
 
 from .const import DEFAULT_LEVEL, LEVEL_TO_INTERRUPTION, LOGGER_NAME
 from .models import DeliveryRecord, NotificationPayload, SmartNotifyConfig
-from .storage import SmartNotifyStorage
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 
@@ -25,12 +24,10 @@ class DeliveryManager:
         self,
         hass: HomeAssistant,
         config: SmartNotifyConfig,
-        storage: SmartNotifyStorage,
     ) -> None:
         """Initialize delivery manager."""
         self._hass = hass
         self._config = config
-        self._storage = storage
 
     def update_config(self, config: SmartNotifyConfig) -> None:
         """Update runtime configuration."""
@@ -77,7 +74,7 @@ class DeliveryManager:
                     errors.append(message)
 
         success = bool(services_used)
-        record = DeliveryRecord(
+        return DeliveryRecord(
             notification_id=payload.id,
             recipients=recipients,
             services=services_used,
@@ -85,22 +82,6 @@ class DeliveryManager:
             success=success,
             error="; ".join(errors) if errors else None,
         )
-        self._storage.add_delivery({
-            "notification_id": record.notification_id,
-            "recipients": record.recipients,
-            "services": record.services,
-            "delivered_at": record.delivered_at.isoformat(),
-            "success": record.success,
-            "error": record.error,
-        })
-        if errors:
-            self._storage.add_error({
-                "notification_id": payload.id,
-                "errors": errors,
-                "timestamp": dt_util.utcnow().isoformat(),
-            })
-        await self._storage.async_save()
-        return record
 
     async def _async_call_notify(
         self,

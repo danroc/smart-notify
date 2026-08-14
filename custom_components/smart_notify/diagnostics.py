@@ -19,10 +19,7 @@ async def async_get_config_entry_diagnostics(
     return {
         "config_entry": dict(entry.data),
         "options": dict(entry.options),
-        "configuration": storage_data.get("configuration", {}),
         "queue": storage_data.get("queue", []),
-        "last_deliveries": storage_data.get("last_deliveries", []),
-        "errors": storage_data.get("errors", []),
         "strategy_evaluation": coordinator.get_last_evaluation(),
         "pending_count": coordinator.pending_count(),
         "delivered_today": coordinator.delivered_today(),
