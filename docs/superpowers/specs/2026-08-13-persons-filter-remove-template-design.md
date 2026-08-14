@@ -95,4 +95,3 @@ data:
 
 - Telegram / `telegram_bot.send_message`.
 - Presence radius or changing `closest` / `first_home` / `everyone_home`.
-- Top-level `group` / `image` / `url` / `actions` fields.

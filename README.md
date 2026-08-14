@@ -44,8 +44,20 @@ data:
 Handle taps in a `mobile_app_notification_action` automation. See the
 [Companion actionable notifications docs](https://companion.home-assistant.io/docs/notifications/actionable-notifications/).
 
-Other mobile-app options (e.g. `url`) go in the `data` field. Do not nest
-`actions` inside `data`.
+Optional mobile-app fields (`level`, `tag`, `group`, `image`, `url`) are
+top-level service fields:
+
+```yaml
+service: smart_notify.send
+data:
+  title: Laundry
+  message: Washing machine finished.
+  strategy: arrival
+  level: normal
+  tag: laundry
+  group: appliances
+  url: /lovelace/laundry
+```
 
 | Strategy  | Who is notified                                           | Empty set                                   |
 | --------- | --------------------------------------------------------- | ------------------------------------------- |

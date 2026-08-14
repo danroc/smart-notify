@@ -33,12 +33,13 @@ async def test_service_validation_requires_message(
 
 @pytest.mark.parametrize(
     ("field", "value"),
-    (
+    [
         ("queue_if_no_candidate", True),
         ("channels", ["mobile_app"]),
         ("metadata", {"source": "automation"}),
         ("priority", "high"),
-    ),
+        ("data", {"url": "https://example.com"}),
+    ],
 )
 def test_service_schema_rejects_removed_fields(field: str, value: object) -> None:
     """Removed service fields are rejected by the schema."""
@@ -313,11 +314,73 @@ async def test_omitted_strategy_uses_config_default(
 
 
 @pytest.mark.asyncio
+async def test_service_accepts_flat_mobile_fields(
+    hass: HomeAssistant,
+    smart_notify_config_entry: MockConfigEntry,
+) -> None:
+    """Top-level url, group, image, and level are stored on the payload."""
+    hass.states.async_set(
+        "person.alice",
+        "home",
+        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
+    )
+    coordinator = hass.data[DOMAIN]["coordinator"]
+    deliver = AsyncMock(
+        return_value=DeliveryRecord(
+            notification_id="test",
+            recipients=["person.alice"],
+            services=["notify.mobile_app_alice"],
+            delivered_at=dt_util.utcnow(),
+            success=True,
+        )
+    )
+    with patch.object(coordinator._delivery, "deliver", deliver):
+        await hass.services.async_call(
+            DOMAIN,
+            "send",
+            {
+                "message": "Hello",
+                "strategy": "direct",
+                "url": "https://example.com",
+                "group": "alerts",
+                "image": "/local/snapshot.jpg",
+                "level": "critical",
+            },
+            blocking=True,
+        )
+    payload = deliver.await_args.args[0]
+    assert payload.url == "https://example.com"
+    assert payload.group == "alerts"
+    assert payload.image == "/local/snapshot.jpg"
+    assert payload.level == "critical"
+
+
+@pytest.mark.asyncio
+async def test_service_rejects_invalid_level(
+    hass: HomeAssistant,
+    smart_notify_config_entry: MockConfigEntry,
+) -> None:
+    """Level must be silent, normal, or critical."""
+    with pytest.raises(vol.Invalid, match="must be one of"):
+        await hass.services.async_call(
+            DOMAIN,
+            "send",
+            {"message": "Hello", "level": "important"},
+            blocking=True,
+        )
+
+
+@pytest.mark.asyncio
 async def test_service_accepts_top_level_actions(
     hass: HomeAssistant,
     smart_notify_config_entry: MockConfigEntry,
 ) -> None:
     """Top-level actions are stored on the notification payload."""
+    hass.states.async_set(
+        "person.alice",
+        "home",
+        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
+    )
     coordinator = hass.data[DOMAIN]["coordinator"]
     deliver = AsyncMock(
         return_value=DeliveryRecord(
@@ -334,75 +397,13 @@ async def test_service_accepts_top_level_actions(
             "send",
             {
                 "message": "Hello",
+                "strategy": "direct",
                 "actions": [{"action": "ACK", "title": "Got it"}],
             },
             blocking=True,
         )
     payload = deliver.await_args.args[0]
     assert payload.actions == [{"action": "ACK", "title": "Got it"}]
-
-
-@pytest.mark.asyncio
-async def test_service_strips_actions_from_data_dict(
-    hass: HomeAssistant,
-    smart_notify_config_entry: MockConfigEntry,
-) -> None:
-    """Actions nested in service data are ignored."""
-    coordinator = hass.data[DOMAIN]["coordinator"]
-    deliver = AsyncMock(
-        return_value=DeliveryRecord(
-            notification_id="test",
-            recipients=["person.alice"],
-            services=["notify.mobile_app_alice"],
-            delivered_at=dt_util.utcnow(),
-            success=True,
-        )
-    )
-    with patch.object(coordinator._delivery, "deliver", deliver):
-        await hass.services.async_call(
-            DOMAIN,
-            "send",
-            {
-                "message": "Hello",
-                "data": {"actions": [{"action": "IGNORED", "title": "Nope"}]},
-                "actions": [{"action": "ACK", "title": "Got it"}],
-            },
-            blocking=True,
-        )
-    payload = deliver.await_args.args[0]
-    assert payload.actions == [{"action": "ACK", "title": "Got it"}]
-    assert "actions" not in payload.payload
-
-
-@pytest.mark.asyncio
-async def test_service_ignores_actions_only_in_data_dict(
-    hass: HomeAssistant,
-    smart_notify_config_entry: MockConfigEntry,
-) -> None:
-    """Actions nested only in service data are stripped and not delivered."""
-    coordinator = hass.data[DOMAIN]["coordinator"]
-    deliver = AsyncMock(
-        return_value=DeliveryRecord(
-            notification_id="test",
-            recipients=["person.alice"],
-            services=["notify.mobile_app_alice"],
-            delivered_at=dt_util.utcnow(),
-            success=True,
-        )
-    )
-    with patch.object(coordinator._delivery, "deliver", deliver):
-        await hass.services.async_call(
-            DOMAIN,
-            "send",
-            {
-                "message": "Hello",
-                "data": {"actions": [{"action": "IGNORED", "title": "Nope"}]},
-            },
-            blocking=True,
-        )
-    payload = deliver.await_args.args[0]
-    assert payload.actions is None
-    assert "actions" not in payload.payload
 
 
 @pytest.mark.asyncio

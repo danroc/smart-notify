@@ -59,6 +59,22 @@ send:
       example: 4h
       selector:
         text:
+    level:
+      required: false
+      description: >-
+        Notification urgency on mobile devices. silent: passive delivery;
+        normal: standard alert; critical: time-critical alert that can break
+        through focus modes.
+      example: normal
+      selector:
+        select:
+          options:
+            - label: Silent
+              value: silent
+            - label: Normal
+              value: normal
+            - label: Critical
+              value: critical
     tag:
       required: false
       description: >-
@@ -67,23 +83,32 @@ send:
       example: laundry
       selector:
         text:
+    group:
+      required: false
+      description: Group name for stacking notifications on the device.
+      example: appliances
+      selector:
+        text:
+    image:
+      required: false
+      description: Image URL shown in the notification.
+      example: /local/laundry.jpg
+      selector:
+        text:
+    url:
+      required: false
+      description: URL opened when the notification is tapped.
+      example: /lovelace/laundry
+      selector:
+        text:
     actions:
       required: false
       description: >-
         Action buttons for the Companion app (long-press on iOS). Handled via
-        mobile_app_notification_action automations. Do not nest actions inside
-        the data field.
+        mobile_app_notification_action automations.
       example:
         - action: ACK
           title: Got it
-    data:
-      required: false
-      description: >-
-        Extra mobile-app notify options merged into the delivered payload (for
-        example url, clickAction, or group). Do not put actions here; use the
-        top-level actions field instead.
-      selector:
-        object:
     persons:
       required: false
       description: Optional subset of configured person entities to consider.

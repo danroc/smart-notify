@@ -28,8 +28,23 @@ ATTR_TOLERANCE: Final = "tolerance"
 ATTR_EXPIRE_AFTER: Final = "expire_after"
 ATTR_TAG: Final = "tag"
 ATTR_ACTIONS: Final = "actions"
-ATTR_DATA: Final = "data"
+ATTR_LEVEL: Final = "level"
+ATTR_GROUP: Final = "group"
+ATTR_IMAGE: Final = "image"
+ATTR_URL: Final = "url"
 ATTR_PERSONS: Final = "persons"
+
+DEFAULT_LEVEL: Final = "normal"
+LEVEL_SILENT: Final = "silent"
+LEVEL_NORMAL: Final = "normal"
+LEVEL_CRITICAL: Final = "critical"
+LEVEL_CHOICES: Final = [LEVEL_SILENT, LEVEL_NORMAL, LEVEL_CRITICAL]
+# Normal omits push on the notify call (Companion default). Only non-normal levels
+# are mapped when building notify data.
+LEVEL_TO_INTERRUPTION: Final = {
+    LEVEL_SILENT: "passive",
+    LEVEL_CRITICAL: "critical",
+}
 
 DEFAULT_STRATEGY: Final = "closest"
 DEFAULT_TOLERANCE: Final = 500

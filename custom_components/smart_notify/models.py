@@ -12,8 +12,10 @@ from homeassistant.util import dt as dt_util
 from .const import (
     DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
     DEFAULT_EXPIRE_AFTER,
+    DEFAULT_LEVEL,
     DEFAULT_STRATEGY,
     DEFAULT_TOLERANCE,
+    LEVEL_CHOICES,
     QUEUE_STATUS_PENDING,
 )
 
@@ -27,7 +29,10 @@ class NotificationPayload:
     message: str
     strategy: str
     tag: str | None
-    payload: dict[str, Any]
+    level: str
+    group: str | None
+    image: str | None
+    url: str | None
     created: datetime
     expires: datetime
     tolerance: int | None = None
@@ -42,7 +47,10 @@ class NotificationPayload:
             "message": self.message,
             "strategy": self.strategy,
             "tag": self.tag,
-            "payload": self.payload,
+            "level": self.level,
+            "group": self.group,
+            "image": self.image,
+            "url": self.url,
             "created": self.created.isoformat(),
             "expires": self.expires.isoformat(),
             "tolerance": self.tolerance,
@@ -54,18 +62,37 @@ class NotificationPayload:
     def from_dict(cls, data: dict[str, Any]) -> NotificationPayload:
         """Deserialize from storage."""
         strategy = data["strategy"]
+        legacy = data.get("payload")
+        legacy_payload = legacy if isinstance(legacy, dict) else {}
+
+        level = data.get("level", DEFAULT_LEVEL)
+        if level not in LEVEL_CHOICES:
+            level = DEFAULT_LEVEL
+
+        def _field(key: str) -> str | None:
+            value = data.get(key)
+            if value:
+                return str(value)
+            legacy_value = legacy_payload.get(key)
+            if legacy_value:
+                return str(legacy_value)
+            return None
+
         return cls(
             id=data["id"],
             title=data.get("title"),
             message=data["message"],
             strategy=strategy,
-            tag=data.get("tag"),
-            payload=data.get("payload", {}),
+            tag=_field("tag"),
+            level=level,
+            group=_field("group"),
+            image=_field("image"),
+            url=_field("url"),
             created=dt_util.parse_datetime(data["created"]) or dt_util.utcnow(),
             expires=dt_util.parse_datetime(data["expires"]) or dt_util.utcnow(),
             tolerance=data.get("tolerance"),
             persons=data.get("persons"),
-            actions=data.get("actions"),
+            actions=data.get("actions") or legacy_payload.get("actions"),
         )
 
 

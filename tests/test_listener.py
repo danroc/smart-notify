@@ -390,7 +390,10 @@ async def test_flush_unknown_strategy_marks_failed(
         message="Hello",
         strategy=strategy,
         tag=None,
-        payload={},
+        level="normal",
+        group=None,
+        image=None,
+        url=None,
         created=now,
         expires=now + timedelta(hours=4),
     )

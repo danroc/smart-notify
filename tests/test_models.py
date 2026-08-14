@@ -18,11 +18,47 @@ def _payload(persons: list[str] | None = None) -> NotificationPayload:
         message="Message",
         strategy="direct",
         tag=None,
-        payload={},
+        level="normal",
+        group=None,
+        image=None,
+        url=None,
         created=now,
         expires=now,
         persons=persons,
     )
+
+
+def test_payload_roundtrip_preserves_level_and_url() -> None:
+    """Queued payloads keep flat mobile fields across serialize/deserialize."""
+    restored = NotificationPayload.from_dict(
+        _payload().to_dict() | {"level": "critical", "url": "https://example.com"}
+    )
+    assert restored.level == "critical"
+    assert restored.url == "https://example.com"
+
+
+def test_payload_from_dict_rejects_invalid_level() -> None:
+    """Unknown stored levels fall back to normal."""
+    restored = NotificationPayload.from_dict(
+        _payload().to_dict() | {"level": "important"}
+    )
+    assert restored.level == "normal"
+
+
+def test_payload_from_dict_migrates_legacy_payload_dict() -> None:
+    """Queued items with the old payload bag keep known mobile fields."""
+    data = _payload().to_dict()
+    data.pop("url", None)
+    data.pop("group", None)
+    data["payload"] = {
+        "url": "https://example.com",
+        "group": "alerts",
+        "tag": "legacy-tag",
+    }
+    restored = NotificationPayload.from_dict(data)
+    assert restored.url == "https://example.com"
+    assert restored.group == "alerts"
+    assert restored.tag == "legacy-tag"
 
 
 def test_payload_roundtrip_preserves_actions() -> None:

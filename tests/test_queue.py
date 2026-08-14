@@ -35,7 +35,10 @@ def _payload(notification_id: str, expires: timedelta) -> NotificationPayload:
         message="Hello",
         strategy="closest",
         tag=None,
-        payload={},
+        level="normal",
+        group=None,
+        image=None,
+        url=None,
         created=now,
         expires=now + expires,
     )

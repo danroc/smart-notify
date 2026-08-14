@@ -11,10 +11,10 @@ Callers can attach actionable notification buttons (long-press on iOS, expanded 
 ## Locked decisions
 
 - **Send-only.** Smart Notify does not listen for or handle action callbacks. No `smart_notify_action` event, no built-in service runners.
-- **Top-level `actions` field** on `smart_notify.send`. Callers must not nest actions under an inner `data` key (`data.data.actions` is invalid).
-- **Fix notify-entity delivery.** When a configured target is a notify entity and the payload includes `actions`, resolve to the matching legacy `notify.mobile_app_*` service. HA's `notify.send_message` does not accept a nested `data` block, so passing `data` into that path cannot deliver actions.
+- **Top-level `actions` field** on `smart_notify.send`.
+- **Fix notify-entity delivery.** When a configured target is a notify entity and the payload includes rich mobile fields (`actions`, `level`, `url`, `group`, `image`, `tag`), resolve to the matching legacy `notify.mobile_app_*` service. HA's `notify.send_message` does not accept a nested `data` block, so passing `data` into that path cannot deliver those fields.
 - **Config flow unchanged.** Per-person targets remain notify entities or legacy services selected in the UI.
-- The existing optional `data` service field stays for other arbitrary notify payload keys (e.g. `url`, `clickAction`, `group`). `actions` is **not** accepted inside `data`; use the top-level field instead.
+- Mobile-app options (`level`, `tag`, `group`, `image`, `url`, `actions`) are top-level service fields. There is no generic `data` bag on `smart_notify.send`.
 
 ## API
 
@@ -60,27 +60,16 @@ Schema: optional list; when present, each item is a dict with required string ke
 
 ### Invalid patterns
 
-Do **not** nest actions under the `data` service field:
-
-```yaml
-# Invalid — produces data.data.actions on the notify call
-data:
-  message: Hello
-  data:
-    actions: [...]
-```
-
-`actions` inside the service `data` dict is ignored (not forwarded to the notify payload). Use the top-level `actions` field only. If both are supplied, top-level `actions` is used; log at debug when `data.actions` is present and ignored.
+Do **not** nest mobile fields under a service `data` bag — those keys are rejected by the schema.
 
 ### Notify payload assembly
 
 At delivery time, `_build_notify_data` constructs the notify service call:
 
 1. `message`, `title` from the payload (unchanged).
-2. Build notify `data` dict from:
-   - optional service `data` dict (if any),
-   - merged `tag` (existing behavior),
-   - `actions` from the top-level service field → `data.actions`.
+2. Build notify `data` dict from top-level payload fields:
+   - `group`, `image`, `url`, `tag`, `actions`
+   - `level` → `push.interruption-level` when not `normal`
 3. Omit notify `data` entirely when it would be empty.
 
 Example notify call for the laundry example above:
@@ -135,8 +124,8 @@ HA's `notify.send_message` accepts only `message` and `title`. The Companion app
 
 | Payload | Behavior |
 |---|---|
-| No `actions` and no non-empty service `data` | `notify.send_message` with `message` + `title` (current behavior). |
-| `actions` and/or non-empty service `data` | Attempt entity → legacy resolution (below). |
+| Plain title/message only | `notify.send_message` with `message` + `title` (current behavior). |
+| Any rich mobile field (`actions`, `level` other than normal, `url`, `group`, `image`, `tag`) | Attempt entity → legacy resolution (below). |
 
 **Entity → legacy resolution** (mobile_app only):
 
@@ -154,8 +143,8 @@ Non-`mobile_app` notify entities with `actions`: same fallback behavior (warning
 
 1. Add `ATTR_ACTIONS` to `const.py`.
 2. Add optional `actions` to `SERVICE_SEND_SCHEMA`, `services.yaml`, and `NotificationPayload`.
-3. Coordinator `_build_payload`: read `actions` from top-level service data only; strip/ignore `actions` if present inside service `data`.
-4. `DeliveryManager._build_notify_data`: merge top-level `actions` into notify `data.actions`; keep `tag` merge behavior.
+3. Coordinator `_build_payload`: read flat mobile fields from top-level service data.
+4. `DeliveryManager._build_notify_data`: assemble notify `data` from flat payload fields.
 5. `DeliveryManager._async_call_notify`: implement entity → legacy fallback when notify `data` is non-empty; remove unconditional data-stripping on entity path.
 6. README: actionable notification example and link to `mobile_app_notification_action`.
 7. Tests for schema, payload build, legacy pass-through, entity resolution, fallback, and queued flush.
@@ -164,9 +153,7 @@ Non-`mobile_app` notify entities with `actions`: same fallback behavior (warning
 
 - `actions` omitted → notify call has no `data.actions` (plain notification).
 - Top-level `actions` → notify `data.actions` present; not nested under `data.data`.
-- `tag` + `actions` → both in notify `data`.
-- Service `data: { url: "..." }` + `actions` → merged into single notify `data` dict.
-- `data.actions` in service call ignored when top-level `actions` present (debug log).
+- `tag`, `url`, `group`, `image`, `level` → merged into notify `data` as appropriate.
 - Legacy `notify.mobile_app_*` target → full payload delivered (existing path).
 - Notify entity, no actions → `send_message` only (unchanged).
 - Notify entity + `actions`, resolvable `mobile_app` entity → legacy service called with `data.actions`.
@@ -176,7 +163,6 @@ Non-`mobile_app` notify entities with `actions`: same fallback behavior (warning
 ## Out of scope
 
 - `smart_notify_action` events or built-in action handlers.
-- Top-level `group`, `image`, or `url` fields (use service `data` for those).
 - iOS action categories, `REPLY` / text-input actions, action icons.
 - Non-`mobile_app` notify entities with rich payloads.
 - Telegram or other notify platforms.

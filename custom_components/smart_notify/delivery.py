@@ -6,10 +6,12 @@ import logging
 from typing import Any
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
-from homeassistant.util import dt as dt_util, slugify
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+from homeassistant.util import dt as dt_util
+from homeassistant.util import slugify
 
-from .const import LOGGER_NAME
+from .const import DEFAULT_LEVEL, LEVEL_TO_INTERRUPTION, LOGGER_NAME
 from .models import DeliveryRecord, NotificationPayload, SmartNotifyConfig
 from .storage import SmartNotifyStorage
 
@@ -182,13 +184,22 @@ class DeliveryManager:
         if payload.title:
             data["title"] = payload.title
 
-        notify_data: dict[str, Any] = {}
-        if payload.payload:
-            notify_data.update(payload.payload)
-        if payload.tag:
-            notify_data["tag"] = payload.tag
+        notify_data = {
+            key: value
+            for key, value in (
+                ("group", payload.group),
+                ("image", payload.image),
+                ("url", payload.url),
+                ("tag", payload.tag),
+            )
+            if value
+        }
         if payload.actions:
             notify_data["actions"] = payload.actions
+        if payload.level != DEFAULT_LEVEL:
+            notify_data["push"] = {
+                "interruption-level": LEVEL_TO_INTERRUPTION[payload.level],
+            }
         if notify_data:
             data["data"] = notify_data
         return data

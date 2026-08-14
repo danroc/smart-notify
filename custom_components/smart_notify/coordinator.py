@@ -12,7 +12,23 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from .const import ATTR_ACTIONS, ATTR_DATA, DOMAIN, LOGGER_NAME
+from .const import (
+    ATTR_ACTIONS,
+    ATTR_EXPIRE_AFTER,
+    ATTR_GROUP,
+    ATTR_IMAGE,
+    ATTR_LEVEL,
+    ATTR_MESSAGE,
+    ATTR_PERSONS,
+    ATTR_STRATEGY,
+    ATTR_TAG,
+    ATTR_TITLE,
+    ATTR_TOLERANCE,
+    ATTR_URL,
+    DEFAULT_LEVEL,
+    DOMAIN,
+    LOGGER_NAME,
+)
 from .delivery import DeliveryManager
 from .events import fire_delivered, fire_expired, fire_failed, fire_queued, fire_sent
 from .listeners import EventListener
@@ -21,9 +37,9 @@ from .queue import QueueManager
 from .recipient import RecipientResolver
 from .storage import SmartNotifyStorage
 from .util import (
-    strategy_queues_when_empty,
     generate_id,
     parse_expire_after,
+    strategy_queues_when_empty,
 )
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
@@ -273,28 +289,25 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Build a notification payload from service data."""
         now = dt_util.utcnow()
         expire_after = service_data.get(
-            "expire_after",
+            ATTR_EXPIRE_AFTER,
             self._config.default_expire_after,
         )
-        strategy = service_data.get("strategy", self._config.default_strategy)
-        notify_data = dict(service_data.get(ATTR_DATA) or {})
-        if ATTR_ACTIONS in notify_data:
-            _LOGGER.debug(
-                "Ignoring actions in service data; use top-level actions field"
-            )
-            notify_data.pop(ATTR_ACTIONS)
+        strategy = service_data.get(ATTR_STRATEGY, self._config.default_strategy)
         return NotificationPayload(
             id=generate_id(),
-            title=service_data.get("title"),
-            message=service_data["message"],
+            title=service_data.get(ATTR_TITLE),
+            message=service_data[ATTR_MESSAGE],
             strategy=strategy,
-            tag=service_data.get("tag"),
-            payload=notify_data,
+            tag=service_data.get(ATTR_TAG),
+            level=service_data.get(ATTR_LEVEL, DEFAULT_LEVEL),
+            group=service_data.get(ATTR_GROUP),
+            image=service_data.get(ATTR_IMAGE),
+            url=service_data.get(ATTR_URL),
             actions=service_data.get(ATTR_ACTIONS),
             created=now,
             expires=parse_expire_after(str(expire_after), now),
-            tolerance=service_data.get("tolerance", self._config.default_tolerance),
-            persons=service_data.get("persons"),
+            tolerance=service_data.get(ATTR_TOLERANCE, self._config.default_tolerance),
+            persons=service_data.get(ATTR_PERSONS),
         )
 
     @staticmethod
