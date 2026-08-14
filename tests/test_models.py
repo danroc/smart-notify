@@ -27,6 +27,15 @@ def _payload(persons: list[str] | None = None) -> NotificationPayload:
     )
 
 
+def test_payload_roundtrip_preserves_actions() -> None:
+    """Queued payloads keep actions across serialize/deserialize."""
+    actions = [{"action": "ACK", "title": "Got it"}]
+    restored = NotificationPayload.from_dict(
+        _payload().to_dict() | {"actions": actions}
+    )
+    assert restored.actions == actions
+
+
 def test_payload_roundtrip_preserves_persons() -> None:
     """Queued payloads keep the persons filter across serialize/deserialize."""
     restored = NotificationPayload.from_dict(

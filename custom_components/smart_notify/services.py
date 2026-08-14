@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
+    ATTR_ACTIONS,
     ATTR_CHANNELS,
     ATTR_DATA,
     ATTR_EXPIRE_AFTER,
@@ -31,6 +32,14 @@ from .coordinator import SmartNotifyCoordinator
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 
+ACTION_SCHEMA = vol.Schema(
+    {
+        vol.Required("action"): cv.string,
+        vol.Required("title"): cv.string,
+    },
+    extra=vol.ALLOW_EXTRA,
+)
+
 SERVICE_SEND_SCHEMA = vol.Schema({
     vol.Required(ATTR_MESSAGE): cv.string,
     vol.Optional(ATTR_TITLE): cv.string,
@@ -40,6 +49,7 @@ SERVICE_SEND_SCHEMA = vol.Schema({
     vol.Optional(ATTR_EXPIRE_AFTER): cv.string,
     vol.Optional(ATTR_PRIORITY, default=DEFAULT_PRIORITY): cv.string,
     vol.Optional(ATTR_TAG): cv.string,
+    vol.Optional(ATTR_ACTIONS): vol.All(cv.ensure_list, [ACTION_SCHEMA]),
     vol.Optional(ATTR_DATA): dict,
     vol.Optional(ATTR_CHANNELS): [cv.string],
     vol.Optional(ATTR_METADATA): dict,

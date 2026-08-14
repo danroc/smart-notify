@@ -23,6 +23,30 @@ data:
 
 `persons` is optional. Omit it to consider every person configured in the integration.
 
+### Action buttons
+
+Add optional `actions` for Companion app notification buttons (long-press on iOS):
+
+```yaml
+service: smart_notify.send
+data:
+  title: Laundry
+  message: Washing machine finished.
+  strategy: arrival
+  tag: laundry
+  actions:
+    - action: LAUNDRY_ACK
+      title: Got it
+    - action: LAUNDRY_SNOOZE
+      title: Remind in 1 hour
+```
+
+Handle taps in a `mobile_app_notification_action` automation. See the
+[Companion actionable notifications docs](https://companion.home-assistant.io/docs/notifications/actionable-notifications/).
+
+Other mobile-app options (e.g. `url`) go in the `data` field. Do not nest
+`actions` inside `data`.
+
 | Strategy  | Who is notified                                           | Empty set                                   |
 | --------- | --------------------------------------------------------- | ------------------------------------------- |
 | `direct`  | Everyone eligible                                         | Drop (unless `queue_if_no_candidate: true`) |

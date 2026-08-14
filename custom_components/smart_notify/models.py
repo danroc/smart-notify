@@ -38,6 +38,7 @@ class NotificationPayload:
     queue_if_no_candidate: bool = False
     channels: list[str] | None = None
     persons: list[str] | None = None
+    actions: list[dict[str, Any]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dictionary."""
@@ -56,6 +57,7 @@ class NotificationPayload:
             "queue_if_no_candidate": self.queue_if_no_candidate,
             "channels": self.channels,
             "persons": self.persons,
+            "actions": self.actions,
         }
 
     @classmethod
@@ -81,6 +83,7 @@ class NotificationPayload:
             queue_if_no_candidate=queue_if_no_candidate,
             channels=data.get("channels"),
             persons=data.get("persons"),
+            actions=data.get("actions"),
         )
 
 

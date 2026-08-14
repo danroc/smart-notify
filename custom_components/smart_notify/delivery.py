@@ -6,7 +6,8 @@ import logging
 from typing import Any
 
 from homeassistant.core import HomeAssistant
-from homeassistant.util import dt as dt_util
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.util import dt as dt_util, slugify
 
 from .const import LOGGER_NAME
 from .models import DeliveryRecord, NotificationPayload, SmartNotifyConfig
@@ -117,15 +118,25 @@ class DeliveryManager:
             return
 
         if domain == "notify" and self._hass.states.get(target) is not None:
+            if self._has_rich_notify_data(data):
+                legacy_service = self._resolve_legacy_mobile_app_service(target)
+                if legacy_service is not None:
+                    legacy_domain, legacy_service_name = legacy_service
+                    await self._hass.services.async_call(
+                        legacy_domain,
+                        legacy_service_name,
+                        data,
+                        blocking=True,
+                    )
+                    return
+                _LOGGER.warning(
+                    "Dropping rich notify data for entity %s; could not resolve "
+                    "legacy mobile_app service",
+                    target,
+                )
             send_data: dict[str, Any] = {"message": data["message"]}
             if "title" in data:
                 send_data["title"] = data["title"]
-            if "data" in data:
-                _LOGGER.warning(
-                    "Ignoring notify data for entity %s; use a legacy notify "
-                    "service for rich payloads",
-                    target,
-                )
             await self._hass.services.async_call(
                 "notify",
                 "send_message",
@@ -138,14 +149,46 @@ class DeliveryManager:
         msg = f"Action {target} not found"
         raise ValueError(msg)
 
+    def _resolve_legacy_mobile_app_service(
+        self,
+        entity_id: str,
+    ) -> tuple[str, str] | None:
+        """Resolve a mobile_app notify entity to a legacy notify service."""
+        registry = er.async_get(self._hass)
+        entry = registry.async_get(entity_id)
+        if entry is None or entry.platform != "mobile_app" or not entry.device_id:
+            return None
+
+        device_registry = dr.async_get(self._hass)
+        device = device_registry.async_get(entry.device_id)
+        if device is None:
+            return None
+
+        service_name = slugify(f"mobile_app_{device.name}")
+        if not self._hass.services.has_service("notify", service_name):
+            return None
+        return ("notify", service_name)
+
+    @staticmethod
+    def _has_rich_notify_data(data: dict[str, Any]) -> bool:
+        """Return whether the notify call includes a non-empty data block."""
+        notify_data = data.get("data")
+        return bool(notify_data)
+
     @staticmethod
     def _build_notify_data(payload: NotificationPayload) -> dict[str, Any]:
         """Build notify service data from a payload."""
         data: dict[str, Any] = {"message": payload.message}
         if payload.title:
             data["title"] = payload.title
+
+        notify_data: dict[str, Any] = {}
         if payload.payload:
-            data["data"] = payload.payload
+            notify_data.update(payload.payload)
         if payload.tag:
-            data["data"] = {**(data.get("data") or {}), "tag": payload.tag}
+            notify_data["tag"] = payload.tag
+        if payload.actions:
+            notify_data["actions"] = payload.actions
+        if notify_data:
+            data["data"] = notify_data
         return data

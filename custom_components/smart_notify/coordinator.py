@@ -12,7 +12,7 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, LOGGER_NAME
+from .const import ATTR_ACTIONS, ATTR_DATA, DOMAIN, LOGGER_NAME
 from .delivery import DeliveryManager
 from .events import fire_delivered, fire_expired, fire_failed, fire_queued, fire_sent
 from .listeners import EventListener
@@ -280,6 +280,12 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         queue_if_no_candidate = service_data.get("queue_if_no_candidate")
         if queue_if_no_candidate is None:
             queue_if_no_candidate = default_queue_if_no_candidate(strategy)
+        notify_data = dict(service_data.get(ATTR_DATA) or {})
+        if ATTR_ACTIONS in notify_data:
+            _LOGGER.debug(
+                "Ignoring actions in service data; use top-level actions field"
+            )
+            notify_data.pop(ATTR_ACTIONS)
         return NotificationPayload(
             id=generate_id(),
             title=service_data.get("title"),
@@ -287,7 +293,8 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             strategy=strategy,
             priority=service_data.get("priority", "normal"),
             tag=service_data.get("tag"),
-            payload=service_data.get("data", {}),
+            payload=notify_data,
+            actions=service_data.get(ATTR_ACTIONS),
             created=now,
             expires=parse_expire_after(str(expire_after), now),
             metadata=service_data.get("metadata", {}),

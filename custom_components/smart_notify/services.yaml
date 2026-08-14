@@ -58,6 +58,14 @@ send:
       example: laundry
       selector:
         text:
+    actions:
+      required: false
+      description: >-
+        Action buttons for the Companion app (long-press on iOS). Handled via
+        mobile_app_notification_action automations.
+      example:
+        - action: ACK
+          title: Got it
     data:
       required: false
       selector:
