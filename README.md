@@ -79,10 +79,13 @@ Requires [uv](https://docs.astral.sh/uv/) and Python 3.13.2+ (Home Assistant 202
 uv sync
 
 # Lint
-uv run ruff check custom_components tests
+uv run ruff check .
+
+# Format
+uv run ruff format --check .
 
 # Type check
-uv run ty check custom_components tests
+uv run ty check
 
 # Test
 uv run pytest

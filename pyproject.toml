@@ -27,23 +27,23 @@ line-length = 88
 select = ["ALL"]
 ignore = [
     # Formatter conflicts
-    "COM812",
-    "ISC001",
+    "missing-trailing-comma",
+    "single-line-implicit-string-concatenation",
     # Docstring convention conflicts
-    "D203",
-    "D213",
+    "incorrect-blank-line-before-class",
+    "multi-line-summary-second-line",
     # Not a fit for this project / Home Assistant layout
-    "CPY001", # copyright headers
-    "DOC201", # pydoclint Returns (noisy with short Google docstrings)
-    "DOC501", # pydoclint Raises
-    "INP001", # implicit namespace (HA custom_components / tests layout)
-    "TID252", # relative imports are the HA convention
-    "RUF029", # HA async entrypoints often have no await
-    "RUF067", # HA __init__.py must define setup/unload hooks
-    "PLR6301", # strategy/protocol methods intentionally unused self
-    "TC001", # prefer unconditional imports over TYPE_CHECKING blocks
-    "TC002",
-    "TC003",
+    "missing-copyright-notice", # copyright headers
+    "docstring-missing-returns", # pydoclint Returns (noisy with short Google docstrings)
+    "docstring-missing-exception", # pydoclint Raises
+    "implicit-namespace-package", # implicit namespace (HA custom_components / tests layout)
+    "relative-imports", # relative imports are the HA convention
+    "unused-async", # HA async entrypoints often have no await
+    "non-empty-init-module", # HA __init__.py must define setup/unload hooks
+    "no-self-use", # strategy/protocol methods intentionally unused self
+    "typing-only-first-party-import", # prefer unconditional imports over TYPE_CHECKING blocks
+    "typing-only-third-party-import",
+    "typing-only-standard-library-import",
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -51,13 +51,13 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = [
-    "S101",    # asserts
-    "SLF001",  # private-member access in tests
-    "ARG001",  # unused fixtures / args in tests
-    "PLR2004", # magic values in assertions
-    "D100",    # undocumented-public-module
-    "D103",    # undocumented-public-function
-    "D104",    # undocumented-public-package
+    "assert",    # asserts
+    "private-member-access",  # private-member access in tests
+    "unused-function-argument",  # unused fixtures / args in tests
+    "magic-value-comparison", # magic values in assertions
+    "undocumented-public-module",    # undocumented-public-module
+    "undocumented-public-function",    # undocumented-public-function
+    "undocumented-public-package",    # undocumented-public-package
 ]
 
 [tool.ty]
