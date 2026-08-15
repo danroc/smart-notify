@@ -20,6 +20,7 @@ from .const import (
     DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
     DEFAULT_EXPIRE_AFTER,
     DEFAULT_LEVEL,
+    DEFAULT_LOG_LEVEL,
     DEFAULT_STRATEGY,
     DEFAULT_TOLERANCE,
     LEVEL_CHOICES,
@@ -166,7 +167,7 @@ class SmartNotifyConfig:
     default_strategy: str = DEFAULT_STRATEGY
     default_tolerance: int = DEFAULT_TOLERANCE
     default_expire_after: str = DEFAULT_EXPIRE_AFTER
-    log_level: str = "info"
+    log_level: str = DEFAULT_LOG_LEVEL
     arrival_debounce_seconds: int = DEFAULT_ARRIVAL_DEBOUNCE_SECONDS
 
     @classmethod
@@ -185,7 +186,7 @@ class SmartNotifyConfig:
             default_expire_after=data.get(
                 CONF_DEFAULT_EXPIRE_AFTER, DEFAULT_EXPIRE_AFTER
             ),
-            log_level=data.get(CONF_LOG_LEVEL, "info"),
+            log_level=data.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL),
             arrival_debounce_seconds=int(
                 data.get(
                     CONF_ARRIVAL_DEBOUNCE_SECONDS, DEFAULT_ARRIVAL_DEBOUNCE_SECONDS

@@ -20,6 +20,7 @@ from .const import (
     CONF_PERSONS,
     DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
     DEFAULT_EXPIRE_AFTER,
+    DEFAULT_LOG_LEVEL,
     DEFAULT_STRATEGY,
     DEFAULT_TOLERANCE,
     DOMAIN,
@@ -77,7 +78,7 @@ def _defaults_schema_fields(
         ),
         vol.Required(
             CONF_LOG_LEVEL,
-            default=data.get(CONF_LOG_LEVEL, "info"),
+            default=data.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL),
         ): selector.SelectSelector(
             selector.SelectSelectorConfig(options=["debug", "info", "warning"]),
         ),

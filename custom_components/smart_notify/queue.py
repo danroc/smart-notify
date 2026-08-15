@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from datetime import datetime
 
 from homeassistant.util import dt as dt_util
@@ -36,8 +37,11 @@ class QueueManager:
 
     async def enqueue(self, payload: NotificationPayload) -> QueuedNotification:
         """Add a notification to the queue."""
+        notification_id = payload.id or generate_id()
+        if payload.id != notification_id:
+            payload = replace(payload, id=notification_id)
         queued = QueuedNotification(
-            id=payload.id or generate_id(),
+            id=notification_id,
             payload=payload,
             status=QUEUE_STATUS_PENDING,
         )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
@@ -54,3 +55,14 @@ async def test_queue_expiration(queue_manager: QueueManager) -> None:
     assert expired[0].id == "expired"
     assert queue_manager.count_pending() == 0
     assert queue_manager._storage.get_queue() == []
+
+
+@pytest.mark.asyncio
+async def test_enqueue_syncs_generated_id_into_payload(
+    queue_manager: QueueManager,
+) -> None:
+    """Enqueue assigns a shared id to the queue item and payload."""
+    payload = replace(make_payload(), id="")
+    queued = await queue_manager.enqueue(payload)
+    assert queued.id
+    assert queued.payload.id == queued.id

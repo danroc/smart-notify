@@ -73,6 +73,7 @@ LOG_LEVELS: Final = {
     "info": INFO,
     "warning": WARNING,
 }
+DEFAULT_LOG_LEVEL: Final = "info"
 
 STRATEGY_DIRECT: Final = "direct"
 STRATEGY_HOME: Final = "home"

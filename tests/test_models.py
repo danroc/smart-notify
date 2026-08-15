@@ -94,3 +94,17 @@ def test_queued_notification_from_dict_follows_payload_strategy() -> None:
     })
     assert restored.strategy == "first_home"
     assert restored.payload.strategy == "first_home"
+
+
+def test_strategy_params_returns_tolerance() -> None:
+    """Strategy params expose the payload tolerance."""
+    payload = make_payload(tolerance=250)
+    assert payload.strategy_params == {"tolerance": 250}
+
+
+def test_queued_notification_roundtrip() -> None:
+    """Queued notifications survive serialize/deserialize."""
+    payload = make_payload("roundtrip", strategy="arrival")
+    original = QueuedNotification(id="roundtrip", payload=payload, status="pending")
+    restored = QueuedNotification.from_dict(original.to_dict())
+    assert restored == original
