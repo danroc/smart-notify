@@ -74,7 +74,7 @@ missing-type-argument = "error"
 possibly-unresolved-reference = "warn"
 
 [tool.ty.analysis]
-strict-literal-narrowing = true
+strict-equality-semantics = true
 strict-generic-narrowing = true
 
 [[tool.ty.overrides]]
