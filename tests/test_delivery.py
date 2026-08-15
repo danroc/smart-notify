@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -30,13 +31,8 @@ def delivery_manager(mock_hass: MagicMock) -> DeliveryManager:
 
 def _payload(**overrides: object) -> NotificationPayload:
     """Build a delivery test payload."""
-    defaults: dict[str, object] = {
-        "title": "Title",
-        "message": "Message",
-        "tag": "tag",
-    }
-    defaults.update(overrides)
-    return make_payload("delivery-test", **defaults)
+    base = make_payload("delivery-test", title="Title", message="Message", tag="tag")
+    return replace(base, **overrides) if overrides else base
 
 
 def test_build_notify_data_merges_actions_tag_and_url() -> None:
