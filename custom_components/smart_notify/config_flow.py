@@ -94,14 +94,23 @@ def _user_schema() -> vol.Schema:
     })
 
 
-def _person_services_schema(persons: list[str]) -> vol.Schema:
-    """Return schema for mapping persons to notify services."""
-    fields: dict[vol.Marker, Any] = {}
-    for person in persons:
-        fields[vol.Optional(person, default=[])] = selector.EntitySelector(
+def _person_notify_fields(
+    persons: list[str],
+    defaults: Mapping[str, list[str]] | None = None,
+) -> dict[vol.Marker, Any]:
+    """Return schema fields mapping persons to notify targets."""
+    defaults = defaults or {}
+    return {
+        vol.Optional(person, default=defaults.get(person, [])): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="notify", multiple=True),
         )
-    return vol.Schema(fields)
+        for person in persons
+    }
+
+
+def _person_services_schema(persons: list[str]) -> vol.Schema:
+    """Return schema for mapping persons to notify services."""
+    return vol.Schema(_person_notify_fields(persons))
 
 
 class SmartNotifyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -196,12 +205,7 @@ class SmartNotifyOptionsFlowHandler(config_entries.OptionsFlow):
         person_services = self.config_entry.data.get(CONF_PERSON_SERVICES, {})
         schema_dict: dict[vol.Marker, Any] = {
             **_defaults_schema_fields(self.config_entry.data),
+            **_person_notify_fields(persons, person_services),
         }
-        for person in persons:
-            schema_dict[
-                vol.Optional(person, default=person_services.get(person, []))
-            ] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="notify", multiple=True),
-            )
 
         return self.async_show_form(step_id="init", data_schema=vol.Schema(schema_dict))

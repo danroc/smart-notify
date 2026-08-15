@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+from datetime import timedelta
 from unittest.mock import MagicMock
 
 import pytest
 from homeassistant.const import ATTR_LATITUDE, ATTR_LONGITUDE
 from homeassistant.core import HomeAssistant, State
+from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.smart_notify.const import DOMAIN
+from custom_components.smart_notify.models import NotificationPayload
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
@@ -34,6 +38,31 @@ def make_person(
             ATTR_LONGITUDE: longitude,
         },
     )
+
+
+def make_payload(
+    notification_id: str = "test-payload",
+    *,
+    expires_delta: timedelta | None = None,
+    **overrides: object,
+) -> NotificationPayload:
+    """Build a notification payload with overridable defaults."""
+    now = dt_util.utcnow()
+    base = NotificationPayload(
+        id=notification_id,
+        title="Title",
+        message="Message",
+        strategy="direct",
+        tag=None,
+        level="normal",
+        group=None,
+        image=None,
+        url=None,
+        created=now,
+        expires=now + (expires_delta or timedelta()),
+        actions=None,
+    )
+    return replace(base, **overrides) if overrides else base
 
 
 @pytest.fixture

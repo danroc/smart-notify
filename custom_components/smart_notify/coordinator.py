@@ -112,8 +112,8 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._listener.set_arrival_callback(self._async_on_person_arrival)
         await self._listener.async_start()
         await self._async_expire_notifications()
-        await self._async_flush_queue()
-        self.async_set_updated_data(self._build_data())
+        await self._async_flush_queue(refresh=False)
+        self._refresh_sensors()
 
     async def async_shutdown(self) -> None:
         """Shut down coordinator resources."""
@@ -134,8 +134,9 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_send(self, service_data: dict[str, Any]) -> None:
         """Handle smart_notify.send."""
         payload = self._build_payload(service_data)
-        params = self._build_strategy_params_from_payload(payload)
-        recipients = self._resolver.resolve(payload.strategy, params, payload.persons)
+        recipients = self._resolver.resolve(
+            payload.strategy, payload.strategy_params, payload.persons
+        )
 
         fire_event(
             self.hass,
@@ -147,28 +148,28 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             },
         )
 
-        if recipients:
-            await self._async_deliver(payload, recipients)
-            self.async_set_updated_data(self._build_data())
-            return
+        try:
+            if recipients:
+                await self._async_deliver(payload, recipients)
+                return
 
-        if strategy_queues_when_empty(payload.strategy):
-            queued = await self._queue.enqueue(payload)
-            fire_event(
-                self.hass,
-                EVENT_QUEUED,
-                {
-                    "notification_id": queued.id,
-                    "strategy": queued.strategy,
-                    "expires": queued.expires.isoformat(),
-                },
-            )
-            _LOGGER.debug("No recipients, queued notification %s", queued.id)
-            self.async_set_updated_data(self._build_data())
-            return
+            if strategy_queues_when_empty(payload.strategy):
+                queued = await self._queue.enqueue(payload)
+                fire_event(
+                    self.hass,
+                    EVENT_QUEUED,
+                    {
+                        "notification_id": queued.id,
+                        "strategy": queued.strategy,
+                        "expires": queued.expires.isoformat(),
+                    },
+                )
+                _LOGGER.debug("No recipients, queued notification %s", queued.id)
+                return
 
-        _LOGGER.debug("No recipients and strategy does not queue")
-        self.async_set_updated_data(self._build_data())
+            _LOGGER.debug("No recipients and strategy does not queue")
+        finally:
+            self._refresh_sensors()
 
     async def _async_on_person_arrival(
         self,
@@ -196,7 +197,6 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Expire and flush the queue after the arrival debounce window."""
         await self._async_expire_notifications()
         await self._async_flush_queue()
-        self.async_set_updated_data(self._build_data())
 
     def _cancel_arrival_debounce(self) -> None:
         """Cancel a pending arrival debounce timer."""
@@ -204,14 +204,15 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._arrival_debounce_unsub()
             self._arrival_debounce_unsub = None
 
-    async def _async_flush_queue(self) -> None:
+    async def _async_flush_queue(self, *, refresh: bool = True) -> None:
         """Attempt delivery for all pending queued notifications."""
         pending = self._queue.list_pending()
         for item in pending:
-            params = self._build_strategy_params_from_payload(item.payload)
             try:
                 recipients = self._resolver.resolve(
-                    item.strategy, params, item.payload.persons
+                    item.strategy,
+                    item.payload.strategy_params,
+                    item.payload.persons,
                 )
             except ValueError as err:
                 await self._queue.remove(item.id)
@@ -223,7 +224,8 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self._queue.remove(item.id)
             self._record_delivery_result(item.id, recipients, record)
 
-        self.async_set_updated_data(self._build_data())
+        if refresh:
+            self._refresh_sensors()
 
     async def _async_deliver(
         self,
@@ -310,14 +312,9 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             persons=service_data.get(ATTR_PERSONS),
         )
 
-    @staticmethod
-    def _build_strategy_params_from_payload(
-        payload: NotificationPayload,
-    ) -> dict[str, Any]:
-        """Build strategy parameters from a stored payload."""
-        return {
-            "tolerance": payload.tolerance,
-        }
+    def _refresh_sensors(self) -> None:
+        """Push updated sensor values to listeners."""
+        self.async_set_updated_data(self._build_data())
 
     def _increment_delivered(self) -> None:
         """Increment delivered counter."""

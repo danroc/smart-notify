@@ -51,6 +51,7 @@ class DeliveryManager:
         service_map = self.services_for_recipients(recipients)
         services_used: list[str] = []
         errors: list[str] = []
+        data = self._build_notify_data(payload)
 
         for recipient, services in service_map.items():
             for service in services:
@@ -58,7 +59,6 @@ class DeliveryManager:
                 if not domain or not service_name:
                     errors.append(f"Invalid notify service: {service}")
                     continue
-                data = self._build_notify_data(payload)
                 _LOGGER.debug(
                     "Delivering notification %s to %s via %s",
                     payload.id,

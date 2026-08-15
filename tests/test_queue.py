@@ -6,11 +6,10 @@ from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from homeassistant.util import dt as dt_util
 
-from custom_components.smart_notify.models import NotificationPayload
 from custom_components.smart_notify.queue import QueueManager
 from custom_components.smart_notify.storage import SmartNotifyStorage
+from tests.conftest import make_payload
 
 
 @pytest.fixture
@@ -27,27 +26,10 @@ def queue_manager(storage: SmartNotifyStorage) -> QueueManager:
     return QueueManager(storage)
 
 
-def _payload(notification_id: str, expires: timedelta) -> NotificationPayload:
-    now = dt_util.utcnow()
-    return NotificationPayload(
-        id=notification_id,
-        title="Test",
-        message="Hello",
-        strategy="closest",
-        tag=None,
-        level="normal",
-        group=None,
-        image=None,
-        url=None,
-        created=now,
-        expires=now + expires,
-    )
-
-
 @pytest.mark.asyncio
 async def test_queue_persistence(queue_manager: QueueManager) -> None:
     """Queue items remain available after enqueue."""
-    payload = _payload("abc123", timedelta(hours=1))
+    payload = make_payload("abc123", expires_delta=timedelta(hours=1))
     queued = await queue_manager.enqueue(payload)
     assert queued.id == "abc123"
     assert queue_manager.count_pending() == 1
@@ -56,7 +38,7 @@ async def test_queue_persistence(queue_manager: QueueManager) -> None:
 @pytest.mark.asyncio
 async def test_queue_remove(queue_manager: QueueManager) -> None:
     """Queued items can be removed."""
-    payload = _payload("remove-me", timedelta(hours=1))
+    payload = make_payload("remove-me", expires_delta=timedelta(hours=1))
     await queue_manager.enqueue(payload)
     await queue_manager.remove("remove-me")
     assert queue_manager.count_pending() == 0
@@ -65,7 +47,7 @@ async def test_queue_remove(queue_manager: QueueManager) -> None:
 @pytest.mark.asyncio
 async def test_queue_expiration(queue_manager: QueueManager) -> None:
     """Expired notifications are removed from storage."""
-    payload = _payload("expired", timedelta(hours=-1))
+    payload = make_payload("expired", expires_delta=timedelta(hours=-1))
     await queue_manager.enqueue(payload)
     expired = await queue_manager.expire_stale()
     assert len(expired) == 1

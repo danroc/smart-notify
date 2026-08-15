@@ -2,36 +2,17 @@
 
 from __future__ import annotations
 
-from homeassistant.util import dt as dt_util
-
 from custom_components.smart_notify.models import (
     NotificationPayload,
     QueuedNotification,
 )
-
-
-def _payload(persons: list[str] | None = None) -> NotificationPayload:
-    now = dt_util.utcnow()
-    return NotificationPayload(
-        id="payload-test",
-        title="Title",
-        message="Message",
-        strategy="direct",
-        tag=None,
-        level="normal",
-        group=None,
-        image=None,
-        url=None,
-        created=now,
-        expires=now,
-        persons=persons,
-    )
+from tests.conftest import make_payload
 
 
 def test_payload_roundtrip_preserves_level_and_url() -> None:
     """Queued payloads keep flat mobile fields across serialize/deserialize."""
     restored = NotificationPayload.from_dict(
-        _payload().to_dict() | {"level": "critical", "url": "https://example.com"}
+        make_payload().to_dict() | {"level": "critical", "url": "https://example.com"}
     )
     assert restored.level == "critical"
     assert restored.url == "https://example.com"
@@ -40,14 +21,14 @@ def test_payload_roundtrip_preserves_level_and_url() -> None:
 def test_payload_from_dict_rejects_invalid_level() -> None:
     """Unknown stored levels fall back to normal."""
     restored = NotificationPayload.from_dict(
-        _payload().to_dict() | {"level": "important"}
+        make_payload().to_dict() | {"level": "important"}
     )
     assert restored.level == "normal"
 
 
 def test_payload_from_dict_migrates_legacy_payload_dict() -> None:
     """Queued items with the old payload bag keep known mobile fields."""
-    data = _payload().to_dict()
+    data = make_payload().to_dict()
     data.pop("url", None)
     data.pop("group", None)
     data["payload"] = {
@@ -65,7 +46,7 @@ def test_payload_roundtrip_preserves_actions() -> None:
     """Queued payloads keep actions across serialize/deserialize."""
     actions = [{"action": "ACK", "title": "Got it"}]
     restored = NotificationPayload.from_dict(
-        _payload().to_dict() | {"actions": actions}
+        make_payload().to_dict() | {"actions": actions}
     )
     assert restored.actions == actions
 
@@ -73,14 +54,14 @@ def test_payload_roundtrip_preserves_actions() -> None:
 def test_payload_roundtrip_preserves_persons() -> None:
     """Queued payloads keep the persons filter across serialize/deserialize."""
     restored = NotificationPayload.from_dict(
-        _payload(persons=["person.alice"]).to_dict()
+        make_payload(persons=["person.alice"]).to_dict()
     )
     assert restored.persons == ["person.alice"]
 
 
 def test_payload_from_dict_without_persons_is_none() -> None:
     """Legacy queue entries without persons target everyone configured."""
-    data = _payload().to_dict()
+    data = make_payload().to_dict()
     data.pop("persons", None)
     restored = NotificationPayload.from_dict(data)
     assert restored.persons is None
@@ -88,7 +69,7 @@ def test_payload_from_dict_without_persons_is_none() -> None:
 
 def test_payload_from_dict_ignores_legacy_template_field() -> None:
     """Stored template keys from old queue entries are ignored."""
-    data = _payload().to_dict()
+    data = make_payload().to_dict()
     data["template"] = "{{ states.person | list }}"
     restored = NotificationPayload.from_dict(data)
     assert not hasattr(restored, "template")
@@ -96,7 +77,7 @@ def test_payload_from_dict_ignores_legacy_template_field() -> None:
 
 def test_payload_from_dict_keeps_stored_strategy() -> None:
     """Queue entries keep the strategy name they were stored with."""
-    data = _payload().to_dict()
+    data = make_payload().to_dict()
     data["strategy"] = "first_home"
     restored = NotificationPayload.from_dict(data)
     assert restored.strategy == "first_home"
@@ -104,13 +85,10 @@ def test_payload_from_dict_keeps_stored_strategy() -> None:
 
 def test_queued_notification_from_dict_follows_payload_strategy() -> None:
     """Queue entries keep the stored strategy name on the item and payload."""
-    payload_data = _payload().to_dict()
+    payload_data = make_payload().to_dict()
     payload_data["strategy"] = "first_home"
     restored = QueuedNotification.from_dict({
         "id": payload_data["id"],
-        "created": payload_data["created"],
-        "expires": payload_data["expires"],
-        "strategy": "first_home",
         "payload": payload_data,
         "status": "pending",
     })

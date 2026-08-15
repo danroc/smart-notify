@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from homeassistant.util import dt as dt_util
 
 from custom_components.smart_notify.delivery import DeliveryManager
 from custom_components.smart_notify.models import NotificationPayload, SmartNotifyConfig
+from tests.conftest import make_payload
 
 LEGACY_MOBILE_APP_SERVICE = "mobile_app_daniel_iphone"
 
@@ -29,22 +29,14 @@ def delivery_manager(mock_hass: MagicMock) -> DeliveryManager:
 
 
 def _payload(**overrides: object) -> NotificationPayload:
-    now = dt_util.utcnow()
-    base = NotificationPayload(
-        id="delivery-test",
-        title="Title",
-        message="Message",
-        strategy="direct",
-        tag="tag",
-        level="normal",
-        group=None,
-        image=None,
-        url=None,
-        created=now,
-        expires=now,
-        actions=None,
-    )
-    return replace(base, **overrides) if overrides else base
+    """Build a delivery test payload."""
+    defaults: dict[str, object] = {
+        "title": "Title",
+        "message": "Message",
+        "tag": "tag",
+    }
+    defaults.update(overrides)
+    return make_payload("delivery-test", **defaults)
 
 
 def test_build_notify_data_merges_actions_tag_and_url() -> None:
@@ -89,19 +81,11 @@ def test_build_notify_data_omits_push_for_normal_level() -> None:
 
 def test_build_notify_data_omits_data_when_empty() -> None:
     """Plain notifications do not include an empty notify data block."""
-    now = dt_util.utcnow()
-    payload = NotificationPayload(
-        id="plain",
+    payload = make_payload(
+        "plain",
         title=None,
         message="Message",
-        strategy="direct",
-        tag=None,
-        level="normal",
-        group=None,
-        image=None,
-        url=None,
-        created=now,
-        expires=now,
+        expires_delta=timedelta(),
     )
     data = DeliveryManager._build_notify_data(payload)
     assert data == {"message": "Message"}

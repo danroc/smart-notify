@@ -38,9 +38,6 @@ class QueueManager:
         """Add a notification to the queue."""
         queued = QueuedNotification(
             id=payload.id or generate_id(),
-            created=payload.created,
-            expires=payload.expires,
-            strategy=payload.strategy,
             payload=payload,
             status=QUEUE_STATUS_PENDING,
         )

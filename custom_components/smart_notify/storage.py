@@ -92,13 +92,3 @@ class SmartNotifyStorage:
     def as_dict(self) -> dict[str, Any]:
         """Return raw storage data for diagnostics."""
         return dict(self._data)
-
-    @staticmethod
-    async def async_migrate(hass: HomeAssistant, version: int) -> int:
-        """Migrate storage if needed."""
-        del hass
-        if version < STORAGE_VERSION:
-            _LOGGER.info(
-                "Migrating Smart Notify storage to version %s", STORAGE_VERSION
-            )
-        return STORAGE_VERSION

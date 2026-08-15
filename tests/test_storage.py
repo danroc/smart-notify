@@ -6,19 +6,10 @@ from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from homeassistant.util import dt as dt_util
 
-from custom_components.smart_notify.const import STORAGE_VERSION
-from custom_components.smart_notify.models import NotificationPayload
 from custom_components.smart_notify.queue import QueueManager
 from custom_components.smart_notify.storage import SmartNotifyStorage
-
-
-@pytest.mark.asyncio
-async def test_storage_migration(hass: MagicMock) -> None:
-    """Storage migration returns current version."""
-    version = await SmartNotifyStorage.async_migrate(hass, 0)
-    assert version == STORAGE_VERSION
+from tests.conftest import make_payload
 
 
 @pytest.mark.asyncio
@@ -42,19 +33,12 @@ async def test_storage_load_and_save(hass: MagicMock) -> None:
     storage = SmartNotifyStorage(hass)
     await storage.async_load()
 
-    now = dt_util.utcnow()
-    payload = NotificationPayload(
-        id="queued-1",
+    payload = make_payload(
+        "queued-1",
+        strategy="arrival",
         title="Test",
         message="Hello",
-        strategy="arrival",
-        tag=None,
-        level="normal",
-        group=None,
-        image=None,
-        url=None,
-        created=now,
-        expires=now + timedelta(hours=1),
+        expires_delta=timedelta(hours=1),
     )
     queue = QueueManager(storage)
     await queue.enqueue(payload)

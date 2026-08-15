@@ -19,7 +19,7 @@ from custom_components.smart_notify.const import (
     DOMAIN,
 )
 from custom_components.smart_notify.models import DeliveryRecord, NotificationPayload
-from tests.conftest import make_config_entry
+from tests.conftest import make_config_entry, make_payload
 
 
 async def _advance_arrival_debounce(
@@ -383,19 +383,12 @@ async def test_flush_unknown_strategy_marks_failed(
 ) -> None:
     """Queued items with a removed strategy are marked failed on flush."""
     coordinator = hass.data[DOMAIN]["coordinator"]
-    now = dt_util.utcnow()
-    payload = NotificationPayload(
-        id=f"old-{strategy}",
+    payload = make_payload(
+        f"old-{strategy}",
         title=None,
         message="Hello",
         strategy=strategy,
-        tag=None,
-        level="normal",
-        group=None,
-        image=None,
-        url=None,
-        created=now,
-        expires=now + timedelta(hours=4),
+        expires_delta=timedelta(hours=4),
     )
     await coordinator.queue_manager.enqueue(payload)
     assert coordinator.pending_count() == 1

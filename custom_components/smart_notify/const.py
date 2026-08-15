@@ -34,10 +34,10 @@ ATTR_IMAGE: Final = "image"
 ATTR_URL: Final = "url"
 ATTR_PERSONS: Final = "persons"
 
-DEFAULT_LEVEL: Final = "normal"
 LEVEL_SILENT: Final = "silent"
 LEVEL_NORMAL: Final = "normal"
 LEVEL_CRITICAL: Final = "critical"
+DEFAULT_LEVEL: Final = LEVEL_NORMAL
 LEVEL_CHOICES: Final = [LEVEL_SILENT, LEVEL_NORMAL, LEVEL_CRITICAL]
 # Normal omits push on the notify call (Companion default). Only non-normal levels
 # are mapped when building notify data.

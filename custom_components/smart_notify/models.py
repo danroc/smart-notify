@@ -10,6 +10,13 @@ from typing import Any
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_ARRIVAL_DEBOUNCE_SECONDS,
+    CONF_DEFAULT_EXPIRE_AFTER,
+    CONF_DEFAULT_STRATEGY,
+    CONF_DEFAULT_TOLERANCE,
+    CONF_LOG_LEVEL,
+    CONF_PERSON_SERVICES,
+    CONF_PERSONS,
     DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
     DEFAULT_EXPIRE_AFTER,
     DEFAULT_LEVEL,
@@ -18,6 +25,13 @@ from .const import (
     LEVEL_CHOICES,
     QUEUE_STATUS_PENDING,
 )
+
+
+def _parse_stored_datetime(value: str | None) -> datetime:
+    """Parse a stored ISO datetime, falling back to now."""
+    if value is None:
+        return dt_util.utcnow()
+    return dt_util.parse_datetime(value) or dt_util.utcnow()
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +52,11 @@ class NotificationPayload:
     tolerance: int | None = None
     persons: list[str] | None = None
     actions: list[dict[str, Any]] | None = None
+
+    @property
+    def strategy_params(self) -> dict[str, Any]:
+        """Parameters passed to the recipient strategy."""
+        return {"tolerance": self.tolerance}
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dictionary."""
@@ -88,8 +107,8 @@ class NotificationPayload:
             group=_field("group"),
             image=_field("image"),
             url=_field("url"),
-            created=dt_util.parse_datetime(data["created"]) or dt_util.utcnow(),
-            expires=dt_util.parse_datetime(data["expires"]) or dt_util.utcnow(),
+            created=_parse_stored_datetime(data.get("created")),
+            expires=_parse_stored_datetime(data.get("expires")),
             tolerance=data.get("tolerance"),
             persons=data.get("persons"),
             actions=data.get("actions") or legacy_payload.get("actions"),
@@ -101,19 +120,28 @@ class QueuedNotification:
     """A notification stored in the persistent queue."""
 
     id: str
-    created: datetime
-    expires: datetime
-    strategy: str
     payload: NotificationPayload
     status: str = QUEUE_STATUS_PENDING
+
+    @property
+    def created(self) -> datetime:
+        """When the notification was created."""
+        return self.payload.created
+
+    @property
+    def expires(self) -> datetime:
+        """When the notification expires."""
+        return self.payload.expires
+
+    @property
+    def strategy(self) -> str:
+        """Recipient selection strategy."""
+        return self.payload.strategy
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dictionary."""
         return {
             "id": self.id,
-            "created": self.created.isoformat(),
-            "expires": self.expires.isoformat(),
-            "strategy": self.strategy,
             "payload": self.payload.to_dict(),
             "status": self.status,
         }
@@ -124,9 +152,6 @@ class QueuedNotification:
         payload = NotificationPayload.from_dict(data["payload"])
         return cls(
             id=data["id"],
-            created=dt_util.parse_datetime(data["created"]) or dt_util.utcnow(),
-            expires=dt_util.parse_datetime(data["expires"]) or dt_util.utcnow(),
-            strategy=payload.strategy,
             payload=payload,
             status=data.get("status", QUEUE_STATUS_PENDING),
         )
@@ -148,30 +173,36 @@ class SmartNotifyConfig:
     def from_entry_data(cls, data: Mapping[str, Any]) -> SmartNotifyConfig:
         """Build configuration from a config entry."""
         return cls(
-            persons=list(data.get("persons", [])),
+            persons=list(data.get(CONF_PERSONS, [])),
             person_services={
                 key: list(value)
-                for key, value in data.get("person_services", {}).items()
+                for key, value in data.get(CONF_PERSON_SERVICES, {}).items()
             },
-            default_strategy=data.get("default_strategy", DEFAULT_STRATEGY),
-            default_tolerance=int(data.get("default_tolerance", DEFAULT_TOLERANCE)),
-            default_expire_after=data.get("default_expire_after", DEFAULT_EXPIRE_AFTER),
-            log_level=data.get("log_level", "info"),
+            default_strategy=data.get(CONF_DEFAULT_STRATEGY, DEFAULT_STRATEGY),
+            default_tolerance=int(
+                data.get(CONF_DEFAULT_TOLERANCE, DEFAULT_TOLERANCE)
+            ),
+            default_expire_after=data.get(
+                CONF_DEFAULT_EXPIRE_AFTER, DEFAULT_EXPIRE_AFTER
+            ),
+            log_level=data.get(CONF_LOG_LEVEL, "info"),
             arrival_debounce_seconds=int(
-                data.get("arrival_debounce_seconds", DEFAULT_ARRIVAL_DEBOUNCE_SECONDS)
+                data.get(
+                    CONF_ARRIVAL_DEBOUNCE_SECONDS, DEFAULT_ARRIVAL_DEBOUNCE_SECONDS
+                )
             ),
         )
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize configuration."""
         return {
-            "persons": self.persons,
-            "person_services": self.person_services,
-            "default_strategy": self.default_strategy,
-            "default_tolerance": self.default_tolerance,
-            "default_expire_after": self.default_expire_after,
-            "log_level": self.log_level,
-            "arrival_debounce_seconds": self.arrival_debounce_seconds,
+            CONF_PERSONS: self.persons,
+            CONF_PERSON_SERVICES: self.person_services,
+            CONF_DEFAULT_STRATEGY: self.default_strategy,
+            CONF_DEFAULT_TOLERANCE: self.default_tolerance,
+            CONF_DEFAULT_EXPIRE_AFTER: self.default_expire_after,
+            CONF_LOG_LEVEL: self.log_level,
+            CONF_ARRIVAL_DEBOUNCE_SECONDS: self.arrival_debounce_seconds,
         }
 
 
