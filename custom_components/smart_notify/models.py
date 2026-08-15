@@ -180,9 +180,7 @@ class SmartNotifyConfig:
                 for key, value in data.get(CONF_PERSON_SERVICES, {}).items()
             },
             default_strategy=data.get(CONF_DEFAULT_STRATEGY, DEFAULT_STRATEGY),
-            default_tolerance=int(
-                data.get(CONF_DEFAULT_TOLERANCE, DEFAULT_TOLERANCE)
-            ),
+            default_tolerance=int(data.get(CONF_DEFAULT_TOLERANCE, DEFAULT_TOLERANCE)),
             default_expire_after=data.get(
                 CONF_DEFAULT_EXPIRE_AFTER, DEFAULT_EXPIRE_AFTER
             ),

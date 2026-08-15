@@ -28,9 +28,7 @@ def recipients_at_home(context: StrategyContext) -> list[str]:
 def recipients_away(context: StrategyContext) -> list[str]:
     """Return person entity IDs currently away from home."""
     return [
-        state.entity_id
-        for state in context.persons
-        if state.state not in HOME_STATES
+        state.entity_id for state in context.persons if state.state not in HOME_STATES
     ]
 
 
