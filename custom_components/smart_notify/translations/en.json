@@ -30,7 +30,8 @@
     },
     "abort": {
       "already_configured": "Smart Notify is already configured.",
-      "entry_not_found": "Smart Notify is no longer configured."
+      "entry_not_found": "Smart Notify is no longer configured.",
+      "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
     }
   },
   "options": {
