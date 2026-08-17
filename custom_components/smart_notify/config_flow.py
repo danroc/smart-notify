@@ -200,8 +200,7 @@ class SmartNotifyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Map notify services to persons."""
         if user_input is not None:
             person_services = {
-                person: user_input.get(person, [])
-                for person in self._persons
+                person: user_input.get(person, []) for person in self._persons
             }
             if self._reconfigure_entry is not None:
                 data = dict(self._reconfigure_entry.data)
