@@ -69,7 +69,8 @@ At delivery time, `_build_notify_data` constructs the notify service call:
 1. `message`, `title` from the payload (unchanged).
 2. Build notify `data` dict from top-level payload fields:
    - `group`, `image`, `url`, `tag`, `actions`
-   - `level` → `push.interruption-level` when not `normal`
+   - `level` → per-level notify data: `push.interruption-level` for iOS plus
+     `priority` and `ttl` for Android. `normal` contributes nothing.
 3. Omit notify `data` entirely when it would be empty.
 
 Example notify call for the laundry example above:
@@ -125,7 +126,7 @@ HA's `notify.send_message` accepts only `message` and `title`. The Companion app
 | Payload | Behavior |
 |---|---|
 | Plain title/message only | `notify.send_message` with `message` + `title` (current behavior). |
-| Any rich mobile field (`actions`, `level` other than normal, `url`, `group`, `image`, `tag`) | Attempt entity → legacy resolution (below). |
+| Any rich mobile field (`actions`, `level` other than `normal`, `url`, `group`, `image`, `tag`) | Attempt entity → legacy resolution (below). |
 
 **Entity → legacy resolution** (mobile_app only):
 

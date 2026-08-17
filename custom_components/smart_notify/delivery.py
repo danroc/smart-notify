@@ -11,7 +11,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
 
-from .const import DEFAULT_LEVEL, LEVEL_TO_INTERRUPTION, LOGGER_NAME
+from .const import LEVEL_NOTIFY_DATA, LOGGER_NAME
 from .models import DeliveryRecord, NotificationPayload, SmartNotifyConfig
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
@@ -177,10 +177,11 @@ class DeliveryManager:
         }
         if payload.actions:
             notify_data["actions"] = payload.actions
-        if payload.level != DEFAULT_LEVEL:
-            notify_data["push"] = {
-                "interruption-level": LEVEL_TO_INTERRUPTION[payload.level],
-            }
+        level_data = LEVEL_NOTIFY_DATA[payload.level]
+        notify_data.update(level_data)
+        if push := level_data.get("push"):
+            # Copy so callers never receive the module-level constant itself.
+            notify_data["push"] = dict(push)
         if notify_data:
             data["data"] = notify_data
         return data

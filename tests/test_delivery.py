@@ -55,24 +55,49 @@ def test_build_notify_data_merges_actions_tag_and_url() -> None:
 
 
 @pytest.mark.parametrize(
-    ("level", "interruption"),
+    ("level", "expected"),
     [
-        ("silent", "passive"),
-        ("critical", "critical"),
+        ("silent", {"push": {"interruption-level": "passive"}}),
+        (
+            "important",
+            {
+                "priority": "high",
+                "ttl": 0,
+                "push": {"interruption-level": "time-sensitive"},
+            },
+        ),
+        (
+            "critical",
+            {
+                "priority": "high",
+                "ttl": 0,
+                "push": {"interruption-level": "critical"},
+            },
+        ),
     ],
 )
-def test_build_notify_data_maps_level_to_push(level: str, interruption: str) -> None:
-    """Non-normal levels set the companion interruption level."""
+def test_build_notify_data_maps_level_to_notify_data(
+    level: str, expected: dict[str, object]
+) -> None:
+    """Non-normal levels add the iOS push block and Android delivery fields."""
     payload = _payload(level=level, tag=None)
     data = DeliveryManager._build_notify_data(payload)
-    assert data["data"]["push"] == {"interruption-level": interruption}
+    assert data["data"] == expected
 
 
-def test_build_notify_data_omits_push_for_normal_level() -> None:
-    """Normal level does not add a push block."""
+def test_build_notify_data_does_not_share_push_dict() -> None:
+    """Built payloads own their push block rather than the level constant."""
+    first = DeliveryManager._build_notify_data(_payload(level="critical", tag=None))
+    first["data"]["push"]["interruption-level"] = "mutated"
+    second = DeliveryManager._build_notify_data(_payload(level="critical", tag=None))
+    assert second["data"]["push"] == {"interruption-level": "critical"}
+
+
+def test_build_notify_data_omits_level_fields_for_normal_level() -> None:
+    """Normal level adds no push block or Android delivery fields."""
     payload = _payload(tag="tag")
     data = DeliveryManager._build_notify_data(payload)
-    assert "push" not in data["data"]
+    assert data["data"] == {"tag": "tag"}
 
 
 def test_build_notify_data_omits_data_when_empty() -> None:
@@ -271,6 +296,8 @@ async def test_delivery_entity_with_level_only_uses_legacy_service(
     assert call_args is not None
     assert call_args.args[0:2] == ("notify", LEGACY_MOBILE_APP_SERVICE)
     assert call_args.args[2]["data"]["push"] == {"interruption-level": "critical"}
+    assert call_args.args[2]["data"]["priority"] == "high"
+    assert call_args.args[2]["data"]["ttl"] == 0
 
 
 @pytest.mark.asyncio

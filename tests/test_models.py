@@ -18,10 +18,18 @@ def test_payload_roundtrip_preserves_level_and_url() -> None:
     assert restored.url == "https://example.com"
 
 
+def test_payload_from_dict_preserves_important_level() -> None:
+    """Important level is stored and restored."""
+    restored = NotificationPayload.from_dict(
+        make_payload().to_dict() | {"level": "important"}
+    )
+    assert restored.level == "important"
+
+
 def test_payload_from_dict_rejects_invalid_level() -> None:
     """Unknown stored levels fall back to normal."""
     restored = NotificationPayload.from_dict(
-        make_payload().to_dict() | {"level": "important"}
+        make_payload().to_dict() | {"level": "bogus"}
     )
     assert restored.level == "normal"
 

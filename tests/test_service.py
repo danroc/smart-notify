@@ -356,17 +356,23 @@ async def test_service_accepts_flat_mobile_fields(
     assert payload.level == "critical"
 
 
+def test_service_schema_accepts_important_level() -> None:
+    """Important is a valid level."""
+    validated = SERVICE_SEND_SCHEMA({"message": "Hello", "level": "important"})
+    assert validated["level"] == "important"
+
+
 @pytest.mark.asyncio
 async def test_service_rejects_invalid_level(
     hass: HomeAssistant,
     smart_notify_config_entry: MockConfigEntry,
 ) -> None:
-    """Level must be silent, normal, or critical."""
+    """Level must be silent, normal, important, or critical."""
     with pytest.raises(vol.Invalid, match="must be one of"):
         await hass.services.async_call(
             DOMAIN,
             "send",
-            {"message": "Hello", "level": "important"},
+            {"message": "Hello", "level": "bogus"},
             blocking=True,
         )
 

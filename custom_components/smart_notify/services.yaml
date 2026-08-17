@@ -63,8 +63,9 @@ send:
       required: false
       description: >-
         Notification urgency on mobile devices. silent: passive delivery;
-        normal: standard alert; critical: time-critical alert that can break
-        through focus modes.
+        normal: standard alert; important: elevated alert (time-sensitive on
+        iOS, high priority on Android); critical: time-critical alert that can
+        break through focus modes.
       example: normal
       selector:
         select:
@@ -73,6 +74,8 @@ send:
               value: silent
             - label: Normal
               value: normal
+            - label: Important
+              value: important
             - label: Critical
               value: critical
     tag:

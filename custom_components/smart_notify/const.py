@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from logging import DEBUG, INFO, WARNING
-from typing import Final
+from typing import Any, Final
 
 DOMAIN: Final = "smart_notify"
 LOGGER_NAME: Final = "custom_components.smart_notify"
@@ -36,15 +36,30 @@ ATTR_PERSONS: Final = "persons"
 
 LEVEL_SILENT: Final = "silent"
 LEVEL_NORMAL: Final = "normal"
+LEVEL_IMPORTANT: Final = "important"
 LEVEL_CRITICAL: Final = "critical"
 DEFAULT_LEVEL: Final = LEVEL_NORMAL
-LEVEL_CHOICES: Final = [LEVEL_SILENT, LEVEL_NORMAL, LEVEL_CRITICAL]
-# Normal omits push on the notify call (Companion default). Only non-normal levels
-# are mapped when building notify data.
-LEVEL_TO_INTERRUPTION: Final = {
-    LEVEL_SILENT: "passive",
-    LEVEL_CRITICAL: "critical",
+# Notify data merged in per level. `push` is read by iOS only, `priority` and
+# `ttl` by Android only. Android channel `importance` is deliberately never set:
+# it is write-once per channel, so applying it to the shared default channel
+# would permanently change the urgency of unrelated notifications on the device.
+LEVEL_NOTIFY_DATA: Final[dict[str, dict[str, Any]]] = {
+    LEVEL_SILENT: {
+        "push": {"interruption-level": "passive"},
+    },
+    LEVEL_NORMAL: {},
+    LEVEL_IMPORTANT: {
+        "priority": "high",
+        "ttl": 0,
+        "push": {"interruption-level": "time-sensitive"},
+    },
+    LEVEL_CRITICAL: {
+        "priority": "high",
+        "ttl": 0,
+        "push": {"interruption-level": "critical"},
+    },
 }
+LEVEL_CHOICES: Final = list(LEVEL_NOTIFY_DATA)
 
 DEFAULT_STRATEGY: Final = "closest"
 DEFAULT_TOLERANCE: Final = 500

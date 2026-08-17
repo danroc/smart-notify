@@ -102,11 +102,27 @@ data:
   title: Laundry
   message: Washing machine finished.
   strategy: arrival
-  level: normal
+  level: important
   tag: laundry
   group: appliances
   url: /lovelace/laundry
 ```
+
+`level` maps to Companion notify data on each platform:
+
+| Level       | iOS (`push.interruption-level`) | Android                    |
+| ----------- | ------------------------------- | -------------------------- |
+| `silent`    | `passive`                       | —                          |
+| `normal`    | omitted (default)               | omitted                    |
+| `important` | `time-sensitive`                | `priority: high`, `ttl: 0` |
+| `critical`  | `critical`                      | `priority: high`, `ttl: 0` |
+
+On Android, `priority` and `ttl` make the notification arrive immediately rather than
+waiting for the screen to wake. Sound, heads-up display, and Do Not Disturb bypass are
+controlled by notification channel settings on the device, which Smart Notify does not
+change: channel importance can only be set once per channel, so writing it would
+permanently alter unrelated notifications. Configure those in Settings > Companion App >
+Notification Channels.
 
 ## Development
 
