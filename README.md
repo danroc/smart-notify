@@ -1,14 +1,40 @@
+<p align="center">
+  <img src="custom_components/smart_notify/brand/icon.png" alt="Smart Notify" width="128">
+</p>
+
 # Smart Notify
 
-Home Assistant custom integration that routes notifications based on presence, distance,
-and configurable delivery strategies.
+Send Home Assistant notifications to the people who should actually get them, based on
+who's home, who's away, or who's closest.
 
-## Installation
+Use one `smart_notify.send` call in your automations instead of wiring up separate
+notify actions for each person.
 
-Copy `custom_components/smart_notify` into your Home Assistant
-`config/custom_components` directory and restart Home Assistant.
+## Install
 
-## Usage
+You need [HACS](https://hacs.xyz/docs/setup/download) first.
+
+1. Open **HACS** → **Integrations**
+2. Click the **⋮** menu (top right) → **Custom repositories**
+3. Add `https://github.com/danroc/smart-notify` and pick **Integration** as the category
+4. Click **Add**
+5. Back in Integrations, search for **Smart Notify**, open it, and click **Download**
+6. Restart Home Assistant
+
+## Setup
+
+1. Go to **Settings** → **Devices & services** → **Add integration**
+2. Search for **Smart Notify**
+3. Pick the `person` entities you want to include
+4. Map each person to their mobile app notify service (for example
+   `notify.mobile_app_pixel_7`)
+5. Set your defaults (strategy, queue expiry, and so on)
+
+You can change these later under the integration's **Configure** and **Options**.
+
+## Send a notification
+
+Call the service from an automation or script:
 
 ```yaml
 service: smart_notify.send
@@ -21,11 +47,28 @@ data:
   expire_after: "4h"
 ```
 
-`persons` is optional. Omit it to consider every person configured in the integration.
+`persons` is optional. Leave it out to use everyone configured in the integration.
+
+### Strategies
+
+| Strategy  | Who gets notified                                       | If nobody matches                   |
+| --------- | ------------------------------------------------------- | ----------------------------------- |
+| `direct`  | Everyone eligible                                       | Dropped                             |
+| `home`    | People at home right now                                | Dropped                             |
+| `away`    | People away right now                                   | Dropped                             |
+| `closest` | People within `tolerance` of whoever is closest to home | Queued until someone has a location |
+| `arrival` | People at home right now                                | Queued until someone arrives home   |
+
+Queued notifications retry when someone enters the home zone. The `away` strategy does
+not wait for someone to leave. If nobody is away, the notification is dropped.
+
+Override the integration defaults per call with `strategy`, `tolerance`, and
+`expire_after`.
 
 ### Action buttons
 
-Add optional `actions` for Companion app notification buttons (long-press on iOS):
+Works with the [Home Assistant Companion app](https://companion.home-assistant.io/). On
+iOS, long-press the notification to see the buttons.
 
 ```yaml
 service: smart_notify.send
@@ -41,11 +84,12 @@ data:
       title: Remind in 1 hour
 ```
 
-Handle taps in a `mobile_app_notification_action` automation. See the
-[Companion actionable notifications docs](https://companion.home-assistant.io/docs/notifications/actionable-notifications/).
+Handle button taps in a `mobile_app_notification_action` automation. See the
+[actionable notifications docs](https://companion.home-assistant.io/docs/notifications/actionable-notifications/).
 
-Optional mobile-app fields (`level`, `tag`, `group`, `image`, `url`) are
-top-level service fields:
+### Other mobile app fields
+
+`level`, `tag`, `group`, `image`, and `url` are supported as top-level service fields:
 
 ```yaml
 service: smart_notify.send
@@ -59,43 +103,14 @@ data:
   url: /lovelace/laundry
 ```
 
-| Strategy  | Who is notified                                           | Empty set                                   |
-| --------- | --------------------------------------------------------- | ------------------------------------------- |
-| `direct`  | Everyone eligible                                         | Drop                                        |
-| `home`    | People at home now                                        | Drop                                        |
-| `away`    | People away now                                           | Drop                                        |
-| `closest` | People within `tolerance` of the closest distance to home | Queue until someone has a usable location   |
-| `arrival` | People at home now                                        | Queue until someone arrives home            |
-
-The queue only retries when someone enters the home zone. `away` does not wait for a
-departure.
-
 ## Development
 
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.13.2+ (Home Assistant 2026.x).
 
 ```bash
-# Install dependencies and create .venv
 uv sync
-
-# Lint
 uv run ruff check .
-
-# Format
 uv run ruff format --check .
-
-# Type check
 uv run ty check
-
-# Test
 uv run pytest
 ```
-
-### Common uv commands
-
-| Command                    | Description                                          |
-| -------------------------- | ---------------------------------------------------- |
-| `uv sync`                  | Install / update locked dependencies                 |
-| `uv lock`                  | Regenerate `uv.lock` after changing `pyproject.toml` |
-| `uv add --group dev <pkg>` | Add a dev dependency                                 |
-| `uv run <cmd>`             | Run a command in the project virtualenv              |
