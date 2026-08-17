@@ -32,6 +32,11 @@ You need [HACS](https://hacs.xyz/docs/setup/download) first.
 
 You can change these later under the integration's **Configure** and **Options**.
 
+To add or remove a person after setup, open the Smart Notify integration and choose
+**Reconfigure**. Pick the updated person list, then map each person to their notify
+service. Use **Options** to change defaults or update notify mappings for existing
+persons.
+
 ## Send a notification
 
 Call the service from an automation or script:

@@ -13,6 +13,13 @@
           "log_level": "Logging level"
         }
       },
+      "reconfigure": {
+        "title": "Smart Notify persons",
+        "description": "Add or remove persons included in Smart Notify.",
+        "data": {
+          "persons": "Persons"
+        }
+      },
       "person_services": {
         "title": "Notification services",
         "description": "Map each person to one or more notify services."
@@ -22,7 +29,8 @@
       "persons_required": "Select at least one person."
     },
     "abort": {
-      "already_configured": "Smart Notify is already configured."
+      "already_configured": "Smart Notify is already configured.",
+      "entry_not_found": "Smart Notify is no longer configured."
     }
   },
   "options": {
