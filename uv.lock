@@ -3882,7 +3882,7 @@ wheels = [
 
 [[package]]
 name = "smart-notify"
-version = "0.2.2"
+version = "0.3.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]
