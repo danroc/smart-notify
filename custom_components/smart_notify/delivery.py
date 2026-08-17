@@ -170,7 +170,9 @@ class DeliveryManager:
             for key, value in (
                 ("group", payload.group),
                 ("image", payload.image),
+                # iOS reads the tap target from `url`, Android from `clickAction`.
                 ("url", payload.url),
+                ("clickAction", payload.url),
                 ("tag", payload.tag),
             )
             if value

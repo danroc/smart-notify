@@ -68,7 +68,8 @@ At delivery time, `_build_notify_data` constructs the notify service call:
 
 1. `message`, `title` from the payload (unchanged).
 2. Build notify `data` dict from top-level payload fields:
-   - `group`, `image`, `url`, `tag`, `actions`
+   - `group`, `image`, `tag`, `actions`
+   - `url` → both `url` (read by iOS) and `clickAction` (read by Android)
    - `level` → per-level notify data: `push.interruption-level` for iOS plus
      `priority` and `ttl` for Android. `normal` contributes nothing.
 3. Omit notify `data` entirely when it would be empty.

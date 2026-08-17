@@ -81,14 +81,17 @@ send:
     tag:
       required: false
       description: >-
-        Tag passed to the mobile app notify payload. Use to replace or group
-        related notifications on the device.
+        Tag passed to the mobile app notify payload. A new notification with the
+        same tag replaces the previous one. Ignored by iOS for critical
+        notifications.
       example: laundry
       selector:
         text:
     group:
       required: false
-      description: Group name for stacking notifications on the device.
+      description: >-
+        Group name for stacking notifications on the device. Ignored by iOS for
+        critical notifications.
       example: appliances
       selector:
         text:
@@ -100,14 +103,17 @@ send:
         text:
     url:
       required: false
-      description: URL opened when the notification is tapped.
+      description: >-
+        URL opened when the notification is tapped. Accepts a relative path such
+        as /lovelace/laundry or a full URL.
       example: /lovelace/laundry
       selector:
         text:
     actions:
       required: false
       description: >-
-        Action buttons for the Companion app (long-press on iOS). Handled via
+        Action buttons for the Companion app (long-press on iOS). Android shows
+        at most 3 buttons, iOS around 10. Handled via
         mobile_app_notification_action automations.
       example:
         - action: ACK

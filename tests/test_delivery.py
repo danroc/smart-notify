@@ -47,11 +47,19 @@ def test_build_notify_data_merges_actions_tag_and_url() -> None:
     assert data["title"] == "Title"
     assert data["data"] == {
         "url": "https://example.com",
+        "clickAction": "https://example.com",
         "group": "alerts",
         "tag": "tag",
         "actions": [{"action": "ACK", "title": "Got it"}],
     }
     assert "actions" not in data
+
+
+def test_build_notify_data_omits_click_action_without_url() -> None:
+    """No tap target is sent when the payload has no url."""
+    data = DeliveryManager._build_notify_data(_payload(url=None))
+    assert "url" not in data["data"]
+    assert "clickAction" not in data["data"]
 
 
 @pytest.mark.parametrize(

@@ -92,6 +92,8 @@ data:
 Handle button taps in a `mobile_app_notification_action` automation. See the
 [actionable notifications docs](https://companion.home-assistant.io/docs/notifications/actionable-notifications/).
 
+Android shows at most 3 buttons; iOS shows around 10.
+
 ### Other mobile app fields
 
 `level`, `tag`, `group`, `image`, and `url` are supported as top-level service fields:
@@ -108,7 +110,19 @@ data:
   url: /lovelace/laundry
 ```
 
-`level` maps to Companion notify data on each platform:
+`tag`, `group`, `image`, and `url` behave the same on Android and iOS:
+
+| Field   | Behavior                                               | Notes                                                                               |
+| ------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `tag`   | Replaces an earlier notification carrying the same tag | On Android, do not reuse one tag across different `group` values                    |
+| `group` | Stacks related notifications together                  |                                                                                     |
+| `image` | Shows an image in the notification                     | Relative paths such as `/local/laundry.jpg` resolve against your Home Assistant URL |
+| `url`   | Opens a URL when the notification is tapped            | Accepts relative paths such as `/lovelace/laundry` or full URLs                     |
+
+iOS ignores `group` and `tag` on `critical` notifications, so those cannot be stacked or
+replaced.
+
+`level` is the one field whose behavior differs per platform:
 
 | Level       | iOS (`push.interruption-level`) | Android                    |
 | ----------- | ------------------------------- | -------------------------- |
