@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.util import dt as dt_util
 
@@ -19,13 +19,12 @@ from .const import (
     CONF_PERSONS,
     DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
     DEFAULT_EXPIRE_AFTER,
-    DEFAULT_LEVEL,
     DEFAULT_LOG_LEVEL,
     DEFAULT_STRATEGY,
     DEFAULT_TOLERANCE,
-    LEVEL_CHOICES,
     QUEUE_STATUS_PENDING,
 )
+from .schema import QUEUE_ITEM_SCHEMA, QUEUE_PAYLOAD_SCHEMA
 
 
 def _parse_stored_datetime(value: str | None) -> datetime:
@@ -80,12 +79,13 @@ class NotificationPayload:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> NotificationPayload:
-        """Deserialize from storage."""
-        strategy = data["strategy"]
+        """Deserialize and validate storage payload data."""
+        return cls.from_validated(QUEUE_PAYLOAD_SCHEMA(data))
 
-        level = data.get("level", DEFAULT_LEVEL)
-        if level not in LEVEL_CHOICES:
-            level = DEFAULT_LEVEL
+    @classmethod
+    def from_validated(cls, validated: Mapping[str, Any]) -> NotificationPayload:
+        """Build from a dict already validated by ``QUEUE_PAYLOAD_SCHEMA``."""
+        data = cast("dict[str, Any]", validated)
 
         def _field(key: str) -> str | None:
             value = data.get(key)
@@ -97,9 +97,9 @@ class NotificationPayload:
             id=data["id"],
             title=data.get("title"),
             message=data["message"],
-            strategy=strategy,
+            strategy=data["strategy"],
             tag=_field("tag"),
-            level=level,
+            level=data["level"],
             group=_field("group"),
             image=_field("image"),
             url=_field("url"),
@@ -144,11 +144,16 @@ class QueuedNotification:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> QueuedNotification:
-        """Deserialize from storage."""
-        payload = NotificationPayload.from_dict(data["payload"])
+        """Deserialize and validate storage queue item data."""
+        return cls.from_validated(QUEUE_ITEM_SCHEMA(data))
+
+    @classmethod
+    def from_validated(cls, item: Mapping[str, Any]) -> QueuedNotification:
+        """Build from a dict already validated by ``QUEUE_ITEM_SCHEMA``."""
+        data = cast("dict[str, Any]", item)
         return cls(
             id=data["id"],
-            payload=payload,
+            payload=NotificationPayload.from_validated(data["payload"]),
             status=data.get("status", QUEUE_STATUS_PENDING),
         )
 

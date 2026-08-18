@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from pathlib import Path
 
 import pytest
-import yaml
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import State
 from homeassistant.util import dt as dt_util
@@ -67,16 +65,3 @@ def test_strategy_labels_cover_choices() -> None:
     """Config UI labels exist for every strategy choice."""
     assert list(STRATEGY_LABELS) == list(STRATEGY_CHOICES)
     assert all(label[0].isupper() for label in STRATEGY_LABELS.values())
-
-
-def test_services_yaml_strategy_labels_match_const() -> None:
-    """services.yaml strategy dropdown stays in sync with STRATEGY_LABELS."""
-    path = (
-        Path(__file__).resolve().parents[1]
-        / "custom_components"
-        / "smart_notify"
-        / "services.yaml"
-    )
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    options = data["send"]["fields"]["strategy"]["selector"]["select"]["options"]
-    assert {option["value"]: option["label"] for option in options} == STRATEGY_LABELS

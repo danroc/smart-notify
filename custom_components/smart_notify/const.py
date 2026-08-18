@@ -64,6 +64,12 @@ LEVEL_NOTIFY_DATA: Final[dict[str, dict[str, Any]]] = {
     },
 }
 LEVEL_CHOICES: Final = list(LEVEL_NOTIFY_DATA)
+LEVEL_LABELS: Final = {
+    LEVEL_SILENT: "Silent",
+    LEVEL_NORMAL: "Normal",
+    LEVEL_IMPORTANT: "Important",
+    LEVEL_CRITICAL: "Critical",
+}
 
 DEFAULT_STRATEGY: Final = "closest"
 DEFAULT_TOLERANCE: Final = 500

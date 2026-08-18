@@ -8,7 +8,6 @@ from typing import Any
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.helpers import selector
 
 from .const import (
     CONF_ARRIVAL_DEBOUNCE_SECONDS,
@@ -18,71 +17,9 @@ from .const import (
     CONF_LOG_LEVEL,
     CONF_PERSON_SERVICES,
     CONF_PERSONS,
-    DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
-    DEFAULT_EXPIRE_AFTER,
-    DEFAULT_LOG_LEVEL,
-    DEFAULT_STRATEGY,
-    DEFAULT_TOLERANCE,
     DOMAIN,
-    STRATEGY_CHOICES,
-    STRATEGY_LABELS,
 )
-
-
-def _strategy_selector_options() -> list[selector.SelectOptionDict]:
-    """Return labeled strategy dropdown options."""
-    return [
-        {"value": name, "label": STRATEGY_LABELS[name]} for name in STRATEGY_CHOICES
-    ]
-
-
-def _defaults_schema_fields(
-    defaults: Mapping[str, Any] | None = None,
-) -> dict[vol.Marker, Any]:
-    """Return schema fields for integration default settings."""
-    data = defaults or {}
-    return {
-        vol.Required(
-            CONF_DEFAULT_STRATEGY,
-            default=data.get(CONF_DEFAULT_STRATEGY, DEFAULT_STRATEGY),
-        ): selector.SelectSelector(
-            selector.SelectSelectorConfig(options=_strategy_selector_options()),
-        ),
-        vol.Required(
-            CONF_DEFAULT_TOLERANCE,
-            default=data.get(CONF_DEFAULT_TOLERANCE, DEFAULT_TOLERANCE),
-        ): selector.NumberSelector(
-            selector.NumberSelectorConfig(
-                min=0,
-                step=50,
-                mode=selector.NumberSelectorMode.BOX,
-            ),
-        ),
-        vol.Required(
-            CONF_DEFAULT_EXPIRE_AFTER,
-            default=data.get(CONF_DEFAULT_EXPIRE_AFTER, DEFAULT_EXPIRE_AFTER),
-        ): selector.TextSelector(),
-        vol.Required(
-            CONF_ARRIVAL_DEBOUNCE_SECONDS,
-            default=data.get(
-                CONF_ARRIVAL_DEBOUNCE_SECONDS, DEFAULT_ARRIVAL_DEBOUNCE_SECONDS
-            ),
-        ): selector.NumberSelector(
-            selector.NumberSelectorConfig(
-                min=0,
-                max=600,
-                step=5,
-                mode=selector.NumberSelectorMode.BOX,
-                unit_of_measurement="seconds",
-            ),
-        ),
-        vol.Required(
-            CONF_LOG_LEVEL,
-            default=data.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL),
-        ): selector.SelectSelector(
-            selector.SelectSelectorConfig(options=["debug", "info", "warning"]),
-        ),
-    }
+from .schema import defaults_schema_fields, notify_selector, person_selector
 
 
 def _persons_schema(default_persons: list[str] | None = None) -> vol.Schema:
@@ -91,19 +28,15 @@ def _persons_schema(default_persons: list[str] | None = None) -> vol.Schema:
         vol.Required(
             CONF_PERSONS,
             default=default_persons or [],
-        ): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="person", multiple=True),
-        ),
+        ): person_selector(),
     })
 
 
 def _user_schema() -> vol.Schema:
     """Return the user step schema."""
     return vol.Schema({
-        vol.Required(CONF_PERSONS): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="person", multiple=True),
-        ),
-        **_defaults_schema_fields(),
+        vol.Required(CONF_PERSONS): person_selector(),
+        **defaults_schema_fields(),
     })
 
 
@@ -114,9 +47,7 @@ def _person_notify_fields(
     """Return schema fields mapping persons to notify targets."""
     defaults = defaults or {}
     return {
-        vol.Optional(person, default=defaults.get(person, [])): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="notify", multiple=True),
-        )
+        vol.Optional(person, default=defaults.get(person, [])): notify_selector()
         for person in persons
     }
 
@@ -279,7 +210,7 @@ class SmartNotifyOptionsFlowHandler(config_entries.OptionsFlow):
         persons = self.config_entry.data.get(CONF_PERSONS, [])
         person_services = self.config_entry.data.get(CONF_PERSON_SERVICES, {})
         schema_dict: dict[vol.Marker, Any] = {
-            **_defaults_schema_fields(self.config_entry.data),
+            **defaults_schema_fields(self.config_entry.data),
             **_person_notify_fields(persons, person_services),
         }
 

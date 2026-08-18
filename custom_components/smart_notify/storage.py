@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from typing import Any
 
+import voluptuous as vol
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
 from .const import LOGGER_NAME, QUEUE_SCHEMA_VERSION, STORAGE_KEY, STORAGE_VERSION
 from .models import QueuedNotification
+from .schema import QUEUE_ITEM_SCHEMA, STORAGE_SCHEMA
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 
@@ -41,10 +44,26 @@ def _parse_storage_data(stored: object) -> dict[str, Any] | None:
         _LOGGER.warning("Ignoring invalid Smart Notify queue storage payload")
         return None
 
-    return {
+    return STORAGE_SCHEMA({
         "schema_version": QUEUE_SCHEMA_VERSION,
-        "queue": queue_data,
-    }
+        "queue": _parse_queue_items(queue_data),
+    })
+
+
+def _parse_queue_items(queue_data: Sequence[object]) -> list[dict[str, Any]]:
+    """Return queue items that match the current payload schema."""
+    items: list[dict[str, Any]] = []
+    for raw in queue_data:
+        try:
+            items.append(QUEUE_ITEM_SCHEMA(raw))
+        except vol.Invalid as err:
+            item_id = raw.get("id") if isinstance(raw, dict) else None
+            _LOGGER.warning(
+                "Ignoring invalid Smart Notify queue item %s: %s",
+                item_id or "<unknown>",
+                err,
+            )
+    return items
 
 
 class SmartNotifyStorage:
@@ -85,7 +104,8 @@ class SmartNotifyStorage:
     def get_queue(self) -> list[QueuedNotification]:
         """Return queued notifications."""
         return [
-            QueuedNotification.from_dict(item) for item in self._data.get("queue", [])
+            QueuedNotification.from_validated(item)
+            for item in self._data.get("queue", [])
         ]
 
     def set_queue(self, queue: list[QueuedNotification]) -> None:

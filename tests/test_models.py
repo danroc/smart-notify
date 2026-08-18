@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+import voluptuous as vol
+
 from custom_components.smart_notify.models import (
     NotificationPayload,
     QueuedNotification,
@@ -27,10 +30,16 @@ def test_payload_from_dict_preserves_important_level() -> None:
 
 
 def test_payload_from_dict_rejects_invalid_level() -> None:
-    """Unknown stored levels fall back to normal."""
-    restored = NotificationPayload.from_dict(
-        make_payload().to_dict() | {"level": "bogus"}
-    )
+    """Unknown stored levels are rejected instead of coerced to normal."""
+    with pytest.raises(vol.Invalid):
+        NotificationPayload.from_dict(make_payload().to_dict() | {"level": "bogus"})
+
+
+def test_payload_from_dict_defaults_missing_level() -> None:
+    """Legacy queue entries without level use normal."""
+    data = make_payload().to_dict()
+    data.pop("level", None)
+    restored = NotificationPayload.from_dict(data)
     assert restored.level == "normal"
 
 
