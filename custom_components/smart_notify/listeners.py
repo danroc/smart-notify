@@ -68,8 +68,10 @@ class EventListener:
 
         old_value = old_state.state
         new_value = new_state.state
+
         if old_value in {STATE_UNAVAILABLE, STATE_UNKNOWN}:
             return
+
         if old_value not in HOME_STATES and new_value in HOME_STATES:
             _LOGGER.debug(
                 "Person arrival detected: %s (%s -> %s)",
@@ -77,6 +79,7 @@ class EventListener:
                 old_value,
                 new_value,
             )
+
             if self._arrival_callback is not None:
                 await self._arrival_callback(new_state.entity_id, old_state, new_state)
 

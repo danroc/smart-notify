@@ -39,24 +39,26 @@ ACTION_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-SERVICE_SEND_SCHEMA = vol.Schema({
-    vol.Required(ATTR_MESSAGE): cv.string,
-    vol.Optional(ATTR_TITLE): cv.string,
-    vol.Optional(ATTR_STRATEGY): vol.In(STRATEGY_CHOICES),
-    vol.Optional(ATTR_TOLERANCE): cv.positive_int,
-    vol.Optional(ATTR_EXPIRE_AFTER): cv.string,
-    vol.Optional(ATTR_TAG): cv.string,
-    vol.Optional(ATTR_LEVEL): vol.In(LEVEL_CHOICES),
-    vol.Optional(ATTR_GROUP): cv.string,
-    vol.Optional(ATTR_IMAGE): cv.string,
-    vol.Optional(ATTR_URL): cv.string,
-    vol.Optional(ATTR_ACTIONS): vol.All(cv.ensure_list, [ACTION_SCHEMA]),
-    vol.Optional(ATTR_PERSONS): vol.All(
-        cv.ensure_list,
-        [vol.All(cv.entity_id, cv.entity_domain("person"))],
-        vol.Length(min=1),
-    ),
-})
+SERVICE_SEND_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_MESSAGE): cv.string,
+        vol.Optional(ATTR_TITLE): cv.string,
+        vol.Optional(ATTR_STRATEGY): vol.In(STRATEGY_CHOICES),
+        vol.Optional(ATTR_TOLERANCE): cv.positive_int,
+        vol.Optional(ATTR_EXPIRE_AFTER): cv.string,
+        vol.Optional(ATTR_TAG): cv.string,
+        vol.Optional(ATTR_LEVEL): vol.In(LEVEL_CHOICES),
+        vol.Optional(ATTR_GROUP): cv.string,
+        vol.Optional(ATTR_IMAGE): cv.string,
+        vol.Optional(ATTR_URL): cv.string,
+        vol.Optional(ATTR_ACTIONS): vol.All(cv.ensure_list, [ACTION_SCHEMA]),
+        vol.Optional(ATTR_PERSONS): vol.All(
+            cv.ensure_list,
+            [vol.All(cv.entity_id, cv.entity_domain("person"))],
+            vol.Length(min=1),
+        ),
+    }
+)
 
 
 async def async_setup_services(hass: HomeAssistant) -> None:

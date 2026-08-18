@@ -52,9 +52,7 @@ class SmartNotifyStorage:
             STORAGE_VERSION,
             STORAGE_KEY,
         )
-        self._data: dict[str, Any] = {
-            "queue": [],
-        }
+        self._data: dict[str, Any] = {"queue": []}
 
     async def async_load(self) -> None:
         """Load queue data from disk."""

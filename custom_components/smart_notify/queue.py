@@ -38,16 +38,20 @@ class QueueManager:
     async def enqueue(self, payload: NotificationPayload) -> QueuedNotification:
         """Add a notification to the queue."""
         notification_id = payload.id or generate_id()
+
         if payload.id != notification_id:
             payload = replace(payload, id=notification_id)
+
         queued = QueuedNotification(
             id=notification_id,
             payload=payload,
             status=QUEUE_STATUS_PENDING,
         )
+
         queue = self._storage.get_queue()
         queue.append(queued)
         self._storage.set_queue(queue)
+
         await self._storage.async_save()
         _LOGGER.debug("Queued notification %s", queued.id)
         return queued
@@ -66,9 +70,11 @@ class QueueManager:
     ) -> list[QueuedNotification]:
         """Expire notifications past their expiry time and prune them."""
         reference = now or dt_util.utcnow()
+
         expired_items: list[QueuedNotification] = []
         updated: list[QueuedNotification] = []
         changed = False
+
         for item in self._storage.get_queue():
             if item.status == QUEUE_STATUS_PENDING and item.expires <= reference:
                 item.status = QUEUE_STATUS_EXPIRED
@@ -76,11 +82,15 @@ class QueueManager:
                 changed = True
                 _LOGGER.debug("Expiring notification %s", item.id)
                 continue
+
             if item.status == QUEUE_STATUS_EXPIRED:
                 changed = True
                 continue
+
             updated.append(item)
+
         if changed:
             self._storage.set_queue(updated)
             await self._storage.async_save()
+
         return expired_items

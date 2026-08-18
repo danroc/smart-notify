@@ -45,16 +45,20 @@ class RecipientResolver:
         and eligible are passed to the strategy. Unknown IDs are dropped.
         """
         eligible = self.get_eligible_persons()
+
         if persons is not None:
             allowed = set(persons)
             eligible = [state for state in eligible if state.entity_id in allowed]
+
         context = StrategyContext(
             hass=self._hass,
             persons=eligible,
             params=params,
         )
+
         strategy = registry.get(strategy_name)
         _LOGGER.debug("Selected strategy: %s", strategy.name)
+
         recipients = strategy.select_recipients(context)
         _LOGGER.debug("Strategy %s selected recipients: %s", strategy_name, recipients)
         return recipients
