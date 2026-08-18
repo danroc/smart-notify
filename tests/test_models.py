@@ -34,22 +34,6 @@ def test_payload_from_dict_rejects_invalid_level() -> None:
     assert restored.level == "normal"
 
 
-def test_payload_from_dict_migrates_legacy_payload_dict() -> None:
-    """Queued items with the old payload bag keep known mobile fields."""
-    data = make_payload().to_dict()
-    data.pop("url", None)
-    data.pop("group", None)
-    data["payload"] = {
-        "url": "https://example.com",
-        "group": "alerts",
-        "tag": "legacy-tag",
-    }
-    restored = NotificationPayload.from_dict(data)
-    assert restored.url == "https://example.com"
-    assert restored.group == "alerts"
-    assert restored.tag == "legacy-tag"
-
-
 def test_payload_roundtrip_preserves_actions() -> None:
     """Queued payloads keep actions across serialize/deserialize."""
     actions = [{"action": "ACK", "title": "Got it"}]

@@ -82,8 +82,6 @@ class NotificationPayload:
     def from_dict(cls, data: dict[str, Any]) -> NotificationPayload:
         """Deserialize from storage."""
         strategy = data["strategy"]
-        legacy = data.get("payload")
-        legacy_payload = legacy if isinstance(legacy, dict) else {}
 
         level = data.get("level", DEFAULT_LEVEL)
         if level not in LEVEL_CHOICES:
@@ -93,9 +91,6 @@ class NotificationPayload:
             value = data.get(key)
             if value:
                 return str(value)
-            legacy_value = legacy_payload.get(key)
-            if legacy_value:
-                return str(legacy_value)
             return None
 
         return cls(
@@ -112,7 +107,7 @@ class NotificationPayload:
             expires=_parse_stored_datetime(data.get("expires")),
             tolerance=data.get("tolerance"),
             persons=data.get("persons"),
-            actions=data.get("actions") or legacy_payload.get("actions"),
+            actions=data.get("actions"),
         )
 
 
