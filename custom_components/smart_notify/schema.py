@@ -65,7 +65,7 @@ class _SerializableSelector(Protocol):
     """HA selector that can be serialized for services.yaml."""
 
     def serialize(self) -> dict[str, dict[str, Any]]:
-        """Return the selector payload used by voluptuous_serialize."""
+        """Return the HA selector serialization payload for services.yaml."""
         ...
 
 
