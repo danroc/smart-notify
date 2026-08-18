@@ -42,6 +42,14 @@ class DeliveryManager:
                 mapping[recipient] = list(services)
         return mapping
 
+    @staticmethod
+    def _split_service_target(service: str) -> tuple[str, str] | None:
+        """Return ``(domain, service_name)`` when the target format is valid."""
+        domain, _, service_name = service.partition(".")
+        if not domain or not service_name:
+            return None
+        return domain, service_name
+
     async def deliver(
         self,
         payload: NotificationPayload,
@@ -55,10 +63,11 @@ class DeliveryManager:
 
         for recipient, services in service_map.items():
             for service in services:
-                domain, _, service_name = service.partition(".")
-                if not domain or not service_name:
+                parsed = self._split_service_target(service)
+                if parsed is None:
                     errors.append(f"Invalid notify service: {service}")
                     continue
+                domain, service_name = parsed
                 _LOGGER.debug(
                     "Delivering notification %s to %s via %s",
                     payload.id,
@@ -92,45 +101,63 @@ class DeliveryManager:
     ) -> None:
         """Call a legacy notify service or notify.send_message for an entity."""
         if self._hass.services.has_service(domain, service_name):
-            await self._hass.services.async_call(
-                domain,
-                service_name,
-                data,
-                blocking=True,
-            )
+            await self._async_call_service(domain, service_name, data)
             return
 
         if domain == "notify" and self._hass.states.get(target) is not None:
-            if self._has_rich_notify_data(data):
-                legacy_service = self._resolve_legacy_mobile_app_service(target)
-                if legacy_service is not None:
-                    legacy_domain, legacy_service_name = legacy_service
-                    await self._hass.services.async_call(
-                        legacy_domain,
-                        legacy_service_name,
-                        data,
-                        blocking=True,
-                    )
-                    return
-                _LOGGER.warning(
-                    "Dropping rich notify data for entity %s; could not resolve "
-                    "legacy mobile_app service",
-                    target,
-                )
-            send_data: dict[str, Any] = {"message": data["message"]}
-            if "title" in data:
-                send_data["title"] = data["title"]
-            await self._hass.services.async_call(
-                "notify",
-                "send_message",
-                send_data,
-                target={"entity_id": target},
-                blocking=True,
-            )
+            await self._async_call_notify_entity(target, data)
             return
 
         msg = f"Action {target} not found"
         raise ValueError(msg)
+
+    async def _async_call_service(
+        self,
+        domain: str,
+        service_name: str,
+        data: dict[str, Any],
+    ) -> None:
+        """Call a Home Assistant service with blocking delivery."""
+        await self._hass.services.async_call(
+            domain,
+            service_name,
+            data,
+            blocking=True,
+        )
+
+    async def _async_call_notify_entity(
+        self,
+        target: str,
+        data: dict[str, Any],
+    ) -> None:
+        """Deliver to a notify entity with legacy fallback for rich payloads."""
+        if self._has_rich_notify_data(data):
+            legacy_service = self._resolve_legacy_mobile_app_service(target)
+            if legacy_service is not None:
+                legacy_domain, legacy_service_name = legacy_service
+                await self._async_call_service(legacy_domain, legacy_service_name, data)
+                return
+            _LOGGER.warning(
+                "Dropping rich notify data for entity %s; could not resolve "
+                "legacy mobile_app service",
+                target,
+            )
+
+        await self._hass.services.async_call(
+            "notify",
+            "send_message",
+            self._build_send_message_data(data),
+            target={"entity_id": target},
+            blocking=True,
+        )
+
+    @staticmethod
+    def _build_send_message_data(data: dict[str, Any]) -> dict[str, Any]:
+        """Build the payload used by ``notify.send_message``."""
+        send_data: dict[str, Any] = {"message": data["message"]}
+        if "title" in data:
+            send_data["title"] = data["title"]
+        return send_data
 
     def _resolve_legacy_mobile_app_service(
         self,

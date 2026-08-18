@@ -129,6 +129,23 @@ def _person_services_schema(
     return vol.Schema(_person_notify_fields(persons, defaults))
 
 
+def _build_person_services(
+    persons: list[str],
+    source: Mapping[str, Any],
+) -> dict[str, list[str]]:
+    """Return person -> notify entities mapping from form-style input."""
+    return {person: list(source.get(person, [])) for person in persons}
+
+
+_OPTION_DEFAULT_KEYS = (
+    CONF_DEFAULT_STRATEGY,
+    CONF_DEFAULT_TOLERANCE,
+    CONF_DEFAULT_EXPIRE_AFTER,
+    CONF_ARRIVAL_DEBOUNCE_SECONDS,
+    CONF_LOG_LEVEL,
+)
+
+
 class SmartNotifyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Smart Notify."""
 
@@ -143,10 +160,11 @@ class SmartNotifyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not user_input[CONF_PERSONS]:
+            persons = list(user_input[CONF_PERSONS])
+            if not persons:
                 errors["base"] = "persons_required"
             else:
-                self._persons = user_input[CONF_PERSONS]
+                self._persons = persons
                 self._person_services_defaults = None
                 self._reconfigure_entry = None
                 self._defaults = {
@@ -176,16 +194,17 @@ class SmartNotifyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not user_input[CONF_PERSONS]:
+            persons = list(user_input[CONF_PERSONS])
+            if not persons:
                 errors["base"] = "persons_required"
             else:
-                self._persons = user_input[CONF_PERSONS]
+                self._persons = persons
                 self._reconfigure_entry = reconfigure_entry
                 existing_services = reconfigure_entry.data.get(CONF_PERSON_SERVICES, {})
-                self._person_services_defaults = {
-                    person: existing_services.get(person, [])
-                    for person in self._persons
-                }
+                self._person_services_defaults = _build_person_services(
+                    self._persons,
+                    existing_services,
+                )
                 return await self.async_step_person_services()
 
         return self.async_show_form(
@@ -199,9 +218,7 @@ class SmartNotifyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.ConfigFlowResult:
         """Map notify services to persons."""
         if user_input is not None:
-            person_services = {
-                person: user_input.get(person, []) for person in self._persons
-            }
+            person_services = _build_person_services(self._persons, user_input)
             if self._reconfigure_entry is not None:
                 data = dict(self._reconfigure_entry.data)
                 data[CONF_PERSONS] = self._persons
@@ -247,15 +264,12 @@ class SmartNotifyOptionsFlowHandler(config_entries.OptionsFlow):
         """Manage options."""
         if user_input is not None:
             data = dict(self.config_entry.data)
-            person_services = {
-                key: value
-                for key, value in user_input.items()
-                if key.startswith("person.")
-            }
+            persons = list(self.config_entry.data.get(CONF_PERSONS, []))
+            person_services = _build_person_services(persons, user_input)
             defaults = {
-                key: value
-                for key, value in user_input.items()
-                if not key.startswith("person.")
+                key: user_input[key]
+                for key in _OPTION_DEFAULT_KEYS
+                if key in user_input
             }
             data.update(defaults)
             data[CONF_PERSON_SERVICES] = person_services

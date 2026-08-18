@@ -77,15 +77,12 @@ def mock_hass() -> MagicMock:
 @pytest.fixture
 async def smart_notify_config_entry(hass: HomeAssistant) -> MockConfigEntry:
     """Create and set up a Smart Notify config entry."""
-    entry = make_config_entry(
+    return await setup_integration(
+        hass,
         persons=["person.alice"],
         person_services={"person.alice": ["notify.mobile_app_alice"]},
         default_strategy="closest",
     )
-    entry.add_to_hass(hass)
-    await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-    return entry
 
 
 def make_config_entry(**overrides: object) -> MockConfigEntry:
@@ -103,3 +100,39 @@ def make_config_entry(**overrides: object) -> MockConfigEntry:
     }
     data.update(overrides)
     return MockConfigEntry(domain=DOMAIN, data=data)
+
+
+async def setup_integration(
+    hass: HomeAssistant,
+    **overrides: object,
+) -> MockConfigEntry:
+    """Add and set up a Smart Notify config entry for integration tests."""
+    entry = make_config_entry(**overrides)
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+def set_person_home(hass: HomeAssistant, entity_id: str) -> None:
+    """Set a person state to home at Home Assistant base coordinates."""
+    hass.states.async_set(
+        entity_id,
+        "home",
+        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
+    )
+
+
+def set_person_away(
+    hass: HomeAssistant,
+    entity_id: str,
+    *,
+    latitude: float = 40.0,
+    longitude: float = -74.0,
+) -> None:
+    """Set a person state to not_home with explicit coordinates."""
+    hass.states.async_set(
+        entity_id,
+        "not_home",
+        {"latitude": latitude, "longitude": longitude},
+    )

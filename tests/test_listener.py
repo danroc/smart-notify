@@ -19,7 +19,12 @@ from custom_components.smart_notify.const import (
     DOMAIN,
 )
 from custom_components.smart_notify.models import DeliveryRecord, NotificationPayload
-from tests.conftest import make_config_entry, make_payload
+from tests.conftest import (
+    make_payload,
+    set_person_away,
+    set_person_home,
+    setup_integration,
+)
 
 
 async def _advance_arrival_debounce(
@@ -40,11 +45,7 @@ async def test_person_arrival_flushes_queue_after_debounce(
     freezer: FrozenDateTimeFactory,
 ) -> None:
     """Queued notifications deliver after the arrival debounce window."""
-    hass.states.async_set(
-        "person.alice",
-        "not_home",
-        {"latitude": 40.0, "longitude": -74.0},
-    )
+    set_person_away(hass, "person.alice")
     await hass.services.async_call(
         DOMAIN,
         "send",
@@ -57,11 +58,7 @@ async def test_person_arrival_flushes_queue_after_debounce(
     coordinator = hass.data[DOMAIN]["coordinator"]
     assert coordinator.pending_count() == 1
 
-    hass.states.async_set(
-        "person.alice",
-        "home",
-        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-    )
+    set_person_home(hass, "person.alice")
     record = DeliveryRecord(
         notification_id="queued",
         recipients=["person.alice"],
@@ -92,24 +89,13 @@ async def test_arrival_debounce_waits_for_second_person(
     freezer: FrozenDateTimeFactory,
 ) -> None:
     """Debounced flush includes people who arrive during the wait window."""
-    entry = make_config_entry(
+    await setup_integration(
+        hass,
         default_strategy="arrival",
         arrival_debounce_seconds=30,
     )
-    entry.add_to_hass(hass)
-    await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-
-    hass.states.async_set(
-        "person.alice",
-        "not_home",
-        {"latitude": 40.0, "longitude": -74.0},
-    )
-    hass.states.async_set(
-        "person.bob",
-        "not_home",
-        {"latitude": 40.1, "longitude": -74.0},
-    )
+    set_person_away(hass, "person.alice")
+    set_person_away(hass, "person.bob", latitude=40.1, longitude=-74.0)
     await hass.services.async_call(
         DOMAIN,
         "send",
@@ -138,11 +124,7 @@ async def test_arrival_debounce_waits_for_second_person(
 
     deliver = AsyncMock(side_effect=_capture)
     with patch.object(coordinator._delivery, "deliver", deliver):
-        hass.states.async_set(
-            "person.alice",
-            "home",
-            {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-        )
+        set_person_home(hass, "person.alice")
         await coordinator._async_on_person_arrival(
             "person.alice",
             State("person.alice", "not_home"),
@@ -155,11 +137,7 @@ async def test_arrival_debounce_waits_for_second_person(
         await hass.async_block_till_done()
         assert coordinator.pending_count() == 1
 
-        hass.states.async_set(
-            "person.bob",
-            "home",
-            {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-        )
+        set_person_home(hass, "person.bob")
         await coordinator._async_on_person_arrival(
             "person.bob",
             State("person.bob", "not_home"),
@@ -311,13 +289,11 @@ async def test_queued_persons_filter_survives_flush(
     freezer: FrozenDateTimeFactory,
 ) -> None:
     """A queued send for one person still targets only that person after arrival."""
-    entry = make_config_entry(
+    await setup_integration(
+        hass,
         default_strategy="arrival",
         arrival_debounce_seconds=30,
     )
-    entry.add_to_hass(hass)
-    await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
 
     for entity_id, lon in (("person.alice", -74.0), ("person.bob", -74.1)):
         hass.states.async_set(

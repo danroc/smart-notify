@@ -138,14 +138,11 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             payload.strategy, payload.strategy_params, payload.persons
         )
 
-        fire_event(
-            self.hass,
+        self._fire_notification_event(
             EVENT_SENT,
-            {
-                "notification_id": payload.id,
-                "strategy": payload.strategy,
-                "recipients": recipients,
-            },
+            payload.id,
+            strategy=payload.strategy,
+            recipients=recipients,
         )
 
         try:
@@ -155,14 +152,11 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             if strategy_queues_when_empty(payload.strategy):
                 queued = await self._queue.enqueue(payload)
-                fire_event(
-                    self.hass,
+                self._fire_notification_event(
                     EVENT_QUEUED,
-                    {
-                        "notification_id": queued.id,
-                        "strategy": queued.strategy,
-                        "expires": queued.expires.isoformat(),
-                    },
+                    queued.id,
+                    strategy=queued.strategy,
+                    expires=queued.expires.isoformat(),
                 )
                 _LOGGER.debug("No recipients, queued notification %s", queued.id)
                 return
@@ -245,14 +239,11 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Update counters and fire events for a delivery attempt."""
         if record.success:
             self._increment_delivered()
-            fire_event(
-                self.hass,
+            self._fire_notification_event(
                 EVENT_DELIVERED,
-                {
-                    "notification_id": notification_id,
-                    "recipients": recipients,
-                    "services": record.services,
-                },
+                notification_id,
+                recipients=recipients,
+                services=record.services,
             )
             return
 
@@ -265,27 +256,33 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     ) -> None:
         """Update counters and fire events for a failed delivery."""
         self._increment_failed()
-        fire_event(
-            self.hass,
-            EVENT_FAILED,
-            {
-                "notification_id": notification_id,
-                "error": error,
-            },
-        )
+        self._fire_notification_event(EVENT_FAILED, notification_id, error=error)
 
     async def _async_expire_notifications(self) -> None:
         """Expire stale notifications."""
         expired = await self._queue.expire_stale()
         for item in expired:
-            fire_event(
-                self.hass,
+            self._fire_notification_event(
                 EVENT_EXPIRED,
-                {
-                    "notification_id": item.id,
-                    "expired_at": dt_util.utcnow().isoformat(),
-                },
+                item.id,
+                expired_at=dt_util.utcnow().isoformat(),
             )
+
+    def _fire_notification_event(
+        self,
+        event_type: str,
+        notification_id: str,
+        **event_data: object,
+    ) -> None:
+        """Fire a Smart Notify event with the shared notification id."""
+        fire_event(
+            self.hass,
+            event_type,
+            {
+                "notification_id": notification_id,
+                **event_data,
+            },
+        )
 
     def _build_payload(self, service_data: dict[str, Any]) -> NotificationPayload:
         """Build a notification payload from service data."""

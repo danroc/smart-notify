@@ -13,7 +13,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.smart_notify.const import DOMAIN
 from custom_components.smart_notify.models import DeliveryRecord
 from custom_components.smart_notify.services import SERVICE_SEND_SCHEMA
-from tests.conftest import make_config_entry
+from tests.conftest import set_person_away, set_person_home, setup_integration
 
 
 @pytest.mark.asyncio
@@ -53,11 +53,7 @@ async def test_service_send_queues_when_no_recipients(
     smart_notify_config_entry: MockConfigEntry,
 ) -> None:
     """Arrival queues by default when nobody is home."""
-    hass.states.async_set(
-        "person.alice",
-        "not_home",
-        {"latitude": 40.0, "longitude": -74.0},
-    )
+    set_person_away(hass, "person.alice")
     await hass.services.async_call(
         DOMAIN,
         "send",
@@ -77,11 +73,7 @@ async def test_service_send_delivers_to_home_recipients(
     smart_notify_config_entry: MockConfigEntry,
 ) -> None:
     """Service delivers immediately when recipients are available."""
-    hass.states.async_set(
-        "person.alice",
-        "home",
-        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-    )
+    set_person_home(hass, "person.alice")
     coordinator = hass.data[DOMAIN]["coordinator"]
     record = DeliveryRecord(
         notification_id="test",
@@ -125,16 +117,9 @@ async def test_service_rejects_empty_persons(
 @pytest.mark.asyncio
 async def test_service_send_filters_persons(hass: HomeAssistant) -> None:
     """Send with direct and a persons filter delivers only to that person."""
-    entry = make_config_entry()
-    entry.add_to_hass(hass)
-    await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    await setup_integration(hass)
     for entity_id in ("person.alice", "person.bob"):
-        hass.states.async_set(
-            entity_id,
-            "home",
-            {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-        )
+        set_person_home(hass, entity_id)
     coordinator = hass.data[DOMAIN]["coordinator"]
     record = DeliveryRecord(
         notification_id="test",
@@ -165,20 +150,9 @@ async def test_service_queues_when_filtered_person_is_away(
     hass: HomeAssistant,
 ) -> None:
     """Arrival with a person who is away queues and stores the filter."""
-    entry = make_config_entry()
-    entry.add_to_hass(hass)
-    await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-    hass.states.async_set(
-        "person.alice",
-        "not_home",
-        {"latitude": 40.0, "longitude": -74.0},
-    )
-    hass.states.async_set(
-        "person.bob",
-        "home",
-        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-    )
+    await setup_integration(hass)
+    set_person_away(hass, "person.alice")
+    set_person_home(hass, "person.bob")
     await hass.services.async_call(
         DOMAIN,
         "send",
@@ -201,11 +175,7 @@ async def test_service_all_unconfigured_persons_drops_with_direct(
     smart_notify_config_entry: MockConfigEntry,
 ) -> None:
     """Unknown persons are dropped when using a non-queueing strategy."""
-    hass.states.async_set(
-        "person.alice",
-        "home",
-        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-    )
+    set_person_home(hass, "person.alice")
     await hass.services.async_call(
         DOMAIN,
         "send",
@@ -226,11 +196,7 @@ async def test_home_does_not_queue_by_default(
     smart_notify_config_entry: MockConfigEntry,
 ) -> None:
     """Home is a snapshot: nobody home means drop, not wait."""
-    hass.states.async_set(
-        "person.alice",
-        "not_home",
-        {"latitude": 40.0, "longitude": -74.0},
-    )
+    set_person_away(hass, "person.alice")
     await hass.services.async_call(
         DOMAIN,
         "send",
@@ -247,11 +213,7 @@ async def test_away_does_not_queue_by_default(
     smart_notify_config_entry: MockConfigEntry,
 ) -> None:
     """Away is a snapshot: nobody away means drop, not wait for departure."""
-    hass.states.async_set(
-        "person.alice",
-        "home",
-        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-    )
+    set_person_home(hass, "person.alice")
     await hass.services.async_call(
         DOMAIN,
         "send",
@@ -284,16 +246,9 @@ async def test_omitted_strategy_uses_config_default(
     hass: HomeAssistant,
 ) -> None:
     """A send without strategy uses the config default."""
-    entry = make_config_entry(default_strategy="direct")
-    entry.add_to_hass(hass)
-    await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    await setup_integration(hass, default_strategy="direct")
     for entity_id in ("person.alice", "person.bob"):
-        hass.states.async_set(
-            entity_id,
-            "home",
-            {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-        )
+        set_person_home(hass, entity_id)
     coordinator = hass.data[DOMAIN]["coordinator"]
     record = DeliveryRecord(
         notification_id="test",
@@ -319,11 +274,7 @@ async def test_service_accepts_flat_mobile_fields(
     smart_notify_config_entry: MockConfigEntry,
 ) -> None:
     """Top-level url, group, image, and level are stored on the payload."""
-    hass.states.async_set(
-        "person.alice",
-        "home",
-        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-    )
+    set_person_home(hass, "person.alice")
     coordinator = hass.data[DOMAIN]["coordinator"]
     deliver = AsyncMock(
         return_value=DeliveryRecord(
@@ -383,11 +334,7 @@ async def test_service_accepts_top_level_actions(
     smart_notify_config_entry: MockConfigEntry,
 ) -> None:
     """Top-level actions are stored on the notification payload."""
-    hass.states.async_set(
-        "person.alice",
-        "home",
-        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-    )
+    set_person_home(hass, "person.alice")
     coordinator = hass.data[DOMAIN]["coordinator"]
     deliver = AsyncMock(
         return_value=DeliveryRecord(
