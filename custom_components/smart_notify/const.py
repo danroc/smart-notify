@@ -8,8 +8,12 @@ from typing import Any, Final
 DOMAIN: Final = "smart_notify"
 LOGGER_NAME: Final = "custom_components.smart_notify"
 
+# Home Assistant Store file version. Bump only when the on-disk Store wrapper changes.
 STORAGE_VERSION: Final = 2
 STORAGE_KEY: Final = "smart_notify"
+# Queue payload schema version stored in JSON data.
+# Bump when queue item shape changes.
+QUEUE_SCHEMA_VERSION: Final = 1
 
 CONF_PERSONS: Final = "persons"
 CONF_PERSON_SERVICES: Final = "person_services"

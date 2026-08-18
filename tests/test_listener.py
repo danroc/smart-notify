@@ -156,11 +156,7 @@ async def test_restart_persistence(
     smart_notify_config_entry: MockConfigEntry,
 ) -> None:
     """Queued notifications survive coordinator reload."""
-    hass.states.async_set(
-        "person.alice",
-        "not_home",
-        {"latitude": 40.0, "longitude": -74.0},
-    )
+    set_person_away(hass, "person.alice")
     await hass.services.async_call(
         DOMAIN,
         "send",
@@ -182,11 +178,7 @@ async def test_zone_to_home_flushes_queue(
     freezer: FrozenDateTimeFactory,
 ) -> None:
     """Arrival from a named zone flushes the queue after debounce."""
-    hass.states.async_set(
-        "person.alice",
-        "Work",
-        {"latitude": 40.0, "longitude": -74.0},
-    )
+    set_person_away(hass, "person.alice", state="Work")
     await hass.services.async_call(
         DOMAIN,
         "send",
@@ -199,11 +191,7 @@ async def test_zone_to_home_flushes_queue(
     coordinator = hass.data[DOMAIN]["coordinator"]
     assert coordinator.pending_count() == 1
 
-    hass.states.async_set(
-        "person.alice",
-        "home",
-        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-    )
+    set_person_home(hass, "person.alice")
     record = DeliveryRecord(
         notification_id="queued",
         recipients=["person.alice"],
@@ -234,11 +222,7 @@ async def test_failed_flush_does_not_retry(
     freezer: FrozenDateTimeFactory,
 ) -> None:
     """Failed queue delivery leaves the item non-pending so it is not retried."""
-    hass.states.async_set(
-        "person.alice",
-        "not_home",
-        {"latitude": 40.0, "longitude": -74.0},
-    )
+    set_person_away(hass, "person.alice")
     await hass.services.async_call(
         DOMAIN,
         "send",
@@ -251,11 +235,7 @@ async def test_failed_flush_does_not_retry(
     coordinator = hass.data[DOMAIN]["coordinator"]
     assert coordinator.pending_count() == 1
 
-    hass.states.async_set(
-        "person.alice",
-        "home",
-        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-    )
+    set_person_home(hass, "person.alice")
     failed = DeliveryRecord(
         notification_id="queued",
         recipients=["person.alice"],
@@ -295,12 +275,8 @@ async def test_queued_persons_filter_survives_flush(
         arrival_debounce_seconds=30,
     )
 
-    for entity_id, lon in (("person.alice", -74.0), ("person.bob", -74.1)):
-        hass.states.async_set(
-            entity_id,
-            "not_home",
-            {"latitude": 40.0, "longitude": lon},
-        )
+    for entity_id, longitude in (("person.alice", -74.0), ("person.bob", -74.1)):
+        set_person_away(hass, entity_id, longitude=longitude)
     await hass.services.async_call(
         DOMAIN,
         "send",
@@ -331,11 +307,7 @@ async def test_queued_persons_filter_survives_flush(
     deliver = AsyncMock(side_effect=_capture)
     with patch.object(coordinator._delivery, "deliver", deliver):
         for entity_id in ("person.alice", "person.bob"):
-            hass.states.async_set(
-                entity_id,
-                "home",
-                {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
-            )
+            set_person_home(hass, entity_id)
         await coordinator._async_on_person_arrival(
             "person.alice",
             State("person.alice", "not_home"),

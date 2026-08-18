@@ -127,12 +127,13 @@ def set_person_away(
     hass: HomeAssistant,
     entity_id: str,
     *,
+    state: str = "not_home",
     latitude: float = 40.0,
     longitude: float = -74.0,
 ) -> None:
-    """Set a person state to not_home with explicit coordinates."""
+    """Set a person state away from home with explicit coordinates."""
     hass.states.async_set(
         entity_id,
-        "not_home",
+        state,
         {"latitude": latitude, "longitude": longitude},
     )

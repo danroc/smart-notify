@@ -8,10 +8,43 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
-from .const import LOGGER_NAME, STORAGE_KEY, STORAGE_VERSION
+from .const import LOGGER_NAME, QUEUE_SCHEMA_VERSION, STORAGE_KEY, STORAGE_VERSION
 from .models import QueuedNotification
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
+
+
+def _default_storage_data() -> dict[str, Any]:
+    """Return empty storage data for the current queue schema."""
+    return {
+        "schema_version": QUEUE_SCHEMA_VERSION,
+        "queue": [],
+    }
+
+
+def _parse_storage_data(stored: object) -> dict[str, Any] | None:
+    """Return canonical storage data when the stored schema is supported."""
+    if not isinstance(stored, dict):
+        _LOGGER.warning("Ignoring invalid Smart Notify storage payload")
+        return None
+
+    schema_version = stored.get("schema_version")
+    if schema_version != QUEUE_SCHEMA_VERSION:
+        _LOGGER.warning(
+            "Ignoring unsupported Smart Notify storage schema version: %s",
+            schema_version,
+        )
+        return None
+
+    queue_data = stored.get("queue", [])
+    if not isinstance(queue_data, list):
+        _LOGGER.warning("Ignoring invalid Smart Notify queue storage payload")
+        return None
+
+    return {
+        "schema_version": QUEUE_SCHEMA_VERSION,
+        "queue": queue_data,
+    }
 
 
 class SmartNotifyStorage:
@@ -24,7 +57,7 @@ class SmartNotifyStorage:
             STORAGE_VERSION,
             STORAGE_KEY,
         )
-        self._data: dict[str, Any] = {"queue": []}
+        self._data = _default_storage_data()
 
     async def async_load(self) -> None:
         """Load queue data from disk."""
@@ -33,16 +66,11 @@ class SmartNotifyStorage:
             _LOGGER.debug("No existing storage found, using defaults")
             return
 
-        if not isinstance(stored, dict):
-            _LOGGER.warning("Ignoring invalid Smart Notify storage payload")
+        parsed = _parse_storage_data(stored)
+        if parsed is None:
             return
 
-        queue_data = stored.get("queue", [])
-        if not isinstance(queue_data, list):
-            _LOGGER.warning("Ignoring invalid Smart Notify queue storage payload")
-            return
-
-        self._data = {"queue": queue_data}
+        self._data = parsed
         _LOGGER.debug(
             "Loaded storage with %d queued notifications",
             len(self._data["queue"]),
@@ -50,6 +78,7 @@ class SmartNotifyStorage:
 
     async def async_save(self) -> None:
         """Persist queue data to disk."""
+        self._data["schema_version"] = QUEUE_SCHEMA_VERSION
         await self._store.async_save(self._data)
         _LOGGER.debug("Storage saved")
 
