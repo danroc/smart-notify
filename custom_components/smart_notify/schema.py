@@ -354,9 +354,6 @@ def _compact_selector_config(config: Mapping[str, Any]) -> dict[str, Any]:
         if isinstance(raw, float) and raw.is_integer():
             compacted[key] = int(raw)
             continue
-        if isinstance(raw, Mapping):
-            compacted[key] = _compact_selector_config(raw)
-            continue
         compacted[key] = raw
     return compacted
 
@@ -366,10 +363,7 @@ def selector_to_yaml(sel: _SerializableSelector) -> dict[str, Any]:
     serialized = sel.serialize()["selector"]
     result: dict[str, Any] = {}
     for kind, config in serialized.items():
-        compacted = (
-            _compact_selector_config(config) if isinstance(config, Mapping) else {}
-        )
-        result[kind] = compacted or None
+        result[kind] = _compact_selector_config(config) or None
     return result
 
 
