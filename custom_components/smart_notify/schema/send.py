@@ -1,17 +1,4 @@
-"""Shared voluptuous schemas, selectors, and services.yaml catalog.
-
-Send field definitions in ``SEND_FIELDS`` drive ``SERVICE_SEND_SCHEMA`` and
-``render_services_yaml()``. After changing send fields, update the committed
-``services.yaml`` from the catalog (``tests/test_schema.py`` asserts they match):
-
-    uv run python -c "
-from pathlib import Path
-import yaml
-from custom_components.smart_notify.schema import render_services_yaml
-path = Path('custom_components/smart_notify/services.yaml')
-path.write_text(yaml.safe_dump(render_services_yaml(), sort_keys=False))
-"
-"""
+"""smart_notify.send field catalog, validation, and services.yaml generation."""
 
 from __future__ import annotations
 
@@ -23,7 +10,7 @@ import voluptuous as vol
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import selector
 
-from .const import (
+from ..const import (
     ATTR_ACTIONS,
     ATTR_EXPIRE_AFTER,
     ATTR_GROUP,
@@ -36,29 +23,22 @@ from .const import (
     ATTR_TITLE,
     ATTR_TOLERANCE,
     ATTR_URL,
-    CONF_ARRIVAL_DEBOUNCE_SECONDS,
-    CONF_DEFAULT_EXPIRE_AFTER,
-    CONF_DEFAULT_STRATEGY,
-    CONF_DEFAULT_TOLERANCE,
-    CONF_LOG_LEVEL,
-    DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
-    DEFAULT_EXPIRE_AFTER,
-    DEFAULT_LEVEL,
-    DEFAULT_LOG_LEVEL,
-    DEFAULT_STRATEGY,
-    DEFAULT_TOLERANCE,
-    LEVEL_CHOICES,
-    LEVEL_LABELS,
-    LOG_LEVELS,
-    QUEUE_SCHEMA_VERSION,
-    QUEUE_STATUS_DELIVERED,
-    QUEUE_STATUS_EXPIRED,
-    QUEUE_STATUS_FAILED,
-    QUEUE_STATUS_PENDING,
-    STRATEGY_CHOICES,
-    STRATEGY_LABELS,
 )
-from .util import parse_duration
+from .selectors import (
+    duration_selector,
+    level_selector,
+    person_selector,
+    strategy_selector,
+    tolerance_selector,
+)
+from .validators import (
+    CV_ACTIONS,
+    CV_LEVEL,
+    CV_PERSONS,
+    CV_STRATEGY,
+    CV_TOLERANCE,
+    cv_duration,
+)
 
 
 class _SerializableSelector(Protocol):
@@ -69,120 +49,10 @@ class _SerializableSelector(Protocol):
         ...
 
 
-QUEUE_STATUS_CHOICES: tuple[str, ...] = (
-    QUEUE_STATUS_PENDING,
-    QUEUE_STATUS_DELIVERED,
-    QUEUE_STATUS_EXPIRED,
-    QUEUE_STATUS_FAILED,
-)
-
 SERVICE_SEND_NAME = "Send"
 SERVICE_SEND_DESCRIPTION = (
     "Route a notification to the right people using presence and distance "
     "strategies, with optional queueing when nobody matches."
-)
-
-
-def cv_duration(value: object) -> str:
-    """Validate duration shorthand such as 4h, 30m, or 1d."""
-    if not isinstance(value, str):
-        msg = "expected a duration string"
-        raise vol.Invalid(msg)
-    try:
-        parse_duration(value)
-    except ValueError as err:
-        raise vol.Invalid(str(err)) from err
-    return value
-
-
-def _labeled_options(
-    labels: Mapping[str, str],
-) -> list[selector.SelectOptionDict]:
-    """Return select options from a value-to-label mapping."""
-    return [{"value": value, "label": label} for value, label in labels.items()]
-
-
-def strategy_selector() -> selector.Selector[selector.SelectSelectorConfig]:
-    """Return the strategy dropdown selector."""
-    return selector.SelectSelector(
-        selector.SelectSelectorConfig(options=_labeled_options(STRATEGY_LABELS)),
-    )
-
-
-def level_selector() -> selector.Selector[selector.SelectSelectorConfig]:
-    """Return the notification level dropdown selector."""
-    return selector.SelectSelector(
-        selector.SelectSelectorConfig(options=_labeled_options(LEVEL_LABELS)),
-    )
-
-
-def log_level_selector() -> selector.Selector[selector.SelectSelectorConfig]:
-    """Return the integration log-level dropdown selector."""
-    return selector.SelectSelector(
-        selector.SelectSelectorConfig(options=list(LOG_LEVELS)),
-    )
-
-
-def tolerance_selector() -> selector.Selector[selector.NumberSelectorConfig]:
-    """Return the closest-strategy tolerance selector."""
-    return selector.NumberSelector(
-        selector.NumberSelectorConfig(
-            min=0,
-            step=50,
-            mode=selector.NumberSelectorMode.BOX,
-        ),
-    )
-
-
-def duration_selector() -> selector.Selector[selector.TextSelectorConfig]:
-    """Return the expire-after duration text selector."""
-    return selector.TextSelector()
-
-
-def person_selector() -> selector.Selector[selector.EntitySelectorConfig]:
-    """Return a multi-person entity selector."""
-    return selector.EntitySelector(
-        selector.EntitySelectorConfig(domain="person", multiple=True),
-    )
-
-
-def notify_selector() -> selector.Selector[selector.EntitySelectorConfig]:
-    """Return a multi-notify entity selector."""
-    return selector.EntitySelector(
-        selector.EntitySelectorConfig(domain="notify", multiple=True),
-    )
-
-
-def arrival_debounce_selector() -> selector.Selector[selector.NumberSelectorConfig]:
-    """Return the arrival debounce selector."""
-    return selector.NumberSelector(
-        selector.NumberSelectorConfig(
-            min=0,
-            max=600,
-            step=5,
-            mode=selector.NumberSelectorMode.BOX,
-            unit_of_measurement="seconds",
-        ),
-    )
-
-
-ACTION_SCHEMA = vol.Schema(
-    {
-        vol.Required("action"): cv.string,
-        vol.Required("title"): cv.string,
-    },
-    extra=vol.ALLOW_EXTRA,
-)
-
-CV_STRATEGY = vol.In(STRATEGY_CHOICES)
-CV_LEVEL = vol.In(LEVEL_CHOICES)
-CV_TOLERANCE = cv.positive_int
-CV_LOG_LEVEL = vol.In(LOG_LEVELS)
-CV_ACTIONS = vol.All(cv.ensure_list, [ACTION_SCHEMA])
-CV_PERSONS = vol.All(
-    cv.ensure_list,
-    [vol.All(cv.entity_id, cv.entity_domain("person"))],
-    vol.Length(min=1),
 )
 
 
@@ -390,73 +260,3 @@ def render_services_yaml() -> dict[str, Any]:
 
 
 SERVICE_SEND_SCHEMA = _send_voluptuous_schema(SEND_FIELDS)
-
-QUEUE_PAYLOAD_SCHEMA = vol.Schema(
-    {
-        vol.Required("id"): cv.string,
-        vol.Required("message"): cv.string,
-        vol.Required("strategy"): cv.string,
-        vol.Required("created"): cv.string,
-        vol.Required("expires"): cv.string,
-        vol.Optional("title"): vol.Any(None, cv.string),
-        vol.Optional("tag"): vol.Any(None, cv.string),
-        vol.Optional("level", default=DEFAULT_LEVEL): CV_LEVEL,
-        vol.Optional("group"): vol.Any(None, cv.string),
-        vol.Optional("image"): vol.Any(None, cv.string),
-        vol.Optional("url"): vol.Any(None, cv.string),
-        vol.Optional("tolerance"): vol.Any(None, CV_TOLERANCE),
-        vol.Optional("persons"): vol.Any(None, [cv.string]),
-        vol.Optional("actions"): vol.Any(None, CV_ACTIONS),
-    },
-    extra=vol.ALLOW_EXTRA,
-)
-
-QUEUE_ITEM_SCHEMA = vol.Schema(
-    {
-        vol.Required("id"): cv.string,
-        vol.Required("payload"): QUEUE_PAYLOAD_SCHEMA,
-        vol.Optional("status", default=QUEUE_STATUS_PENDING): vol.In(
-            QUEUE_STATUS_CHOICES
-        ),
-    },
-    extra=vol.ALLOW_EXTRA,
-)
-
-STORAGE_SCHEMA = vol.Schema({
-    vol.Required("schema_version"): vol.All(
-        vol.Coerce(int),
-        vol.In([QUEUE_SCHEMA_VERSION]),
-    ),
-    vol.Required("queue"): [QUEUE_ITEM_SCHEMA],
-})
-
-
-def defaults_schema_fields(
-    defaults: Mapping[str, Any] | None = None,
-) -> dict[vol.Marker, Any]:
-    """Return schema fields for integration default settings."""
-    data = defaults or {}
-    return {
-        vol.Required(
-            CONF_DEFAULT_STRATEGY,
-            default=data.get(CONF_DEFAULT_STRATEGY, DEFAULT_STRATEGY),
-        ): strategy_selector(),
-        vol.Required(
-            CONF_DEFAULT_TOLERANCE,
-            default=data.get(CONF_DEFAULT_TOLERANCE, DEFAULT_TOLERANCE),
-        ): tolerance_selector(),
-        vol.Required(
-            CONF_DEFAULT_EXPIRE_AFTER,
-            default=data.get(CONF_DEFAULT_EXPIRE_AFTER, DEFAULT_EXPIRE_AFTER),
-        ): vol.All(duration_selector(), cv_duration),
-        vol.Required(
-            CONF_ARRIVAL_DEBOUNCE_SECONDS,
-            default=data.get(
-                CONF_ARRIVAL_DEBOUNCE_SECONDS, DEFAULT_ARRIVAL_DEBOUNCE_SECONDS
-            ),
-        ): arrival_debounce_selector(),
-        vol.Required(
-            CONF_LOG_LEVEL,
-            default=data.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL),
-        ): log_level_selector(),
-    }

@@ -1,4 +1,4 @@
-"""Notification delivery management."""
+"""Notification delivery orchestration."""
 
 from __future__ import annotations
 
@@ -6,13 +6,16 @@ import logging
 from typing import Any
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
-from homeassistant.util import slugify
 
-from .const import LEVEL_NOTIFY_DATA, LOGGER_NAME
-from .models import DeliveryRecord, NotificationPayload, SmartNotifyConfig
+from ..const import LOGGER_NAME
+from ..models import DeliveryRecord, NotificationPayload, SmartNotifyConfig
+from .mobile_app import resolve_legacy_mobile_app_service
+from .notify_data import (
+    build_notify_data,
+    build_send_message_data,
+    has_rich_notify_data,
+)
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 
@@ -59,7 +62,7 @@ class DeliveryManager:
         service_map = self.services_for_recipients(recipients)
         services_used: list[str] = []
         errors: list[str] = []
-        data = self._build_notify_data(payload)
+        data = build_notify_data(payload)
 
         for recipient, services in service_map.items():
             for service in services:
@@ -131,8 +134,8 @@ class DeliveryManager:
         data: dict[str, Any],
     ) -> None:
         """Deliver to a notify entity with legacy fallback for rich payloads."""
-        if self._has_rich_notify_data(data):
-            legacy_service = self._resolve_legacy_mobile_app_service(target)
+        if has_rich_notify_data(data):
+            legacy_service = resolve_legacy_mobile_app_service(self._hass, target)
             if legacy_service is not None:
                 legacy_domain, legacy_service_name = legacy_service
                 await self._async_call_service(legacy_domain, legacy_service_name, data)
@@ -146,71 +149,7 @@ class DeliveryManager:
         await self._hass.services.async_call(
             "notify",
             "send_message",
-            self._build_send_message_data(data),
+            build_send_message_data(data),
             target={"entity_id": target},
             blocking=True,
         )
-
-    @staticmethod
-    def _build_send_message_data(data: dict[str, Any]) -> dict[str, Any]:
-        """Build the payload used by ``notify.send_message``."""
-        send_data: dict[str, Any] = {"message": data["message"]}
-        if "title" in data:
-            send_data["title"] = data["title"]
-        return send_data
-
-    def _resolve_legacy_mobile_app_service(
-        self,
-        entity_id: str,
-    ) -> tuple[str, str] | None:
-        """Resolve a mobile_app notify entity to a legacy notify service."""
-        registry = er.async_get(self._hass)
-        entry = registry.async_get(entity_id)
-        if entry is None or entry.platform != "mobile_app" or not entry.device_id:
-            return None
-
-        device_registry = dr.async_get(self._hass)
-        device = device_registry.async_get(entry.device_id)
-        if device is None:
-            return None
-
-        service_name = slugify(f"mobile_app_{device.name}")
-        if not self._hass.services.has_service("notify", service_name):
-            return None
-        return ("notify", service_name)
-
-    @staticmethod
-    def _has_rich_notify_data(data: dict[str, Any]) -> bool:
-        """Return whether the notify call includes a non-empty data block."""
-        notify_data = data.get("data")
-        return bool(notify_data)
-
-    @staticmethod
-    def _build_notify_data(payload: NotificationPayload) -> dict[str, Any]:
-        """Build notify service data from a payload."""
-        data: dict[str, Any] = {"message": payload.message}
-        if payload.title:
-            data["title"] = payload.title
-
-        notify_data: dict[str, Any] = {
-            key: value
-            for key, value in (
-                ("group", payload.group),
-                ("image", payload.image),
-                # iOS reads the tap target from `url`, Android from `clickAction`.
-                ("url", payload.url),
-                ("clickAction", payload.url),
-                ("tag", payload.tag),
-            )
-            if value
-        }
-        if payload.actions:
-            notify_data["actions"] = payload.actions
-        level_data = LEVEL_NOTIFY_DATA[payload.level]
-        notify_data.update(level_data)
-        if push := level_data.get("push"):
-            # Copy so callers never receive the module-level constant itself.
-            notify_data["push"] = dict(push)
-        if notify_data:
-            data["data"] = notify_data
-        return data

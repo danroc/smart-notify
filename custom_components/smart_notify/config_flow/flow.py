@@ -1,15 +1,13 @@
-"""Config flow for Smart Notify."""
+"""Smart Notify config flow."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Any
 
-import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 
-from .const import (
+from ..const import (
     CONF_ARRIVAL_DEBOUNCE_SECONDS,
     CONF_DEFAULT_EXPIRE_AFTER,
     CONF_DEFAULT_STRATEGY,
@@ -19,62 +17,13 @@ from .const import (
     CONF_PERSONS,
     DOMAIN,
 )
-from .schema import defaults_schema_fields, notify_selector, person_selector
-
-
-def _persons_schema(default_persons: list[str] | None = None) -> vol.Schema:
-    """Return schema for selecting persons."""
-    return vol.Schema({
-        vol.Required(
-            CONF_PERSONS,
-            default=default_persons or [],
-        ): person_selector(),
-    })
-
-
-def _user_schema() -> vol.Schema:
-    """Return the user step schema."""
-    return vol.Schema({
-        vol.Required(CONF_PERSONS): person_selector(),
-        **defaults_schema_fields(),
-    })
-
-
-def _person_notify_fields(
-    persons: list[str],
-    defaults: Mapping[str, list[str]] | None = None,
-) -> dict[vol.Marker, Any]:
-    """Return schema fields mapping persons to notify targets."""
-    defaults = defaults or {}
-    return {
-        vol.Optional(person, default=defaults.get(person, [])): notify_selector()
-        for person in persons
-    }
-
-
-def _person_services_schema(
-    persons: list[str],
-    defaults: Mapping[str, list[str]] | None = None,
-) -> vol.Schema:
-    """Return schema for mapping persons to notify services."""
-    return vol.Schema(_person_notify_fields(persons, defaults))
-
-
-def _build_person_services(
-    persons: list[str],
-    source: Mapping[str, Any],
-) -> dict[str, list[str]]:
-    """Return person -> notify entities mapping from form-style input."""
-    return {person: list(source.get(person, [])) for person in persons}
-
-
-_OPTION_DEFAULT_KEYS = (
-    CONF_DEFAULT_STRATEGY,
-    CONF_DEFAULT_TOLERANCE,
-    CONF_DEFAULT_EXPIRE_AFTER,
-    CONF_ARRIVAL_DEBOUNCE_SECONDS,
-    CONF_LOG_LEVEL,
+from .forms import (
+    _build_person_services,
+    _person_services_schema,
+    _persons_schema,
+    _user_schema,
 )
+from .options import SmartNotifyOptionsFlowHandler
 
 
 class SmartNotifyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -184,34 +133,3 @@ class SmartNotifyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Get the options flow."""
         del config_entry
         return SmartNotifyOptionsFlowHandler()
-
-
-class SmartNotifyOptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle Smart Notify options."""
-
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.ConfigFlowResult:
-        """Manage options."""
-        if user_input is not None:
-            data = dict(self.config_entry.data)
-            persons = list(self.config_entry.data.get(CONF_PERSONS, []))
-            person_services = _build_person_services(persons, user_input)
-            defaults = {
-                key: user_input[key]
-                for key in _OPTION_DEFAULT_KEYS
-                if key in user_input
-            }
-            data.update(defaults)
-            data[CONF_PERSON_SERVICES] = person_services
-            self.hass.config_entries.async_update_entry(self.config_entry, data=data)
-            return self.async_create_entry(title="", data={})
-
-        persons = self.config_entry.data.get(CONF_PERSONS, [])
-        person_services = self.config_entry.data.get(CONF_PERSON_SERVICES, {})
-        schema_dict: dict[vol.Marker, Any] = {
-            **defaults_schema_fields(self.config_entry.data),
-            **_person_notify_fields(persons, person_services),
-        }
-
-        return self.async_show_form(step_id="init", data_schema=vol.Schema(schema_dict))

@@ -9,6 +9,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from custom_components.smart_notify.delivery import DeliveryManager
+from custom_components.smart_notify.delivery.mobile_app import (
+    resolve_legacy_mobile_app_service,
+)
+from custom_components.smart_notify.delivery.notify_data import build_notify_data
 from custom_components.smart_notify.models import NotificationPayload, SmartNotifyConfig
 from tests.conftest import make_payload
 
@@ -42,7 +46,7 @@ def test_build_notify_data_merges_actions_tag_and_url() -> None:
         url="https://example.com",
         group="alerts",
     )
-    data = DeliveryManager._build_notify_data(payload)
+    data = build_notify_data(payload)
     assert data["message"] == "Message"
     assert data["title"] == "Title"
     assert data["data"] == {
@@ -57,7 +61,7 @@ def test_build_notify_data_merges_actions_tag_and_url() -> None:
 
 def test_build_notify_data_omits_click_action_without_url() -> None:
     """No tap target is sent when the payload has no url."""
-    data = DeliveryManager._build_notify_data(_payload(url=None))
+    data = build_notify_data(_payload(url=None))
     assert "url" not in data["data"]
     assert "clickAction" not in data["data"]
 
@@ -89,22 +93,22 @@ def test_build_notify_data_maps_level_to_notify_data(
 ) -> None:
     """Non-normal levels add the iOS push block and Android delivery fields."""
     payload = _payload(level=level, tag=None)
-    data = DeliveryManager._build_notify_data(payload)
+    data = build_notify_data(payload)
     assert data["data"] == expected
 
 
 def test_build_notify_data_does_not_share_push_dict() -> None:
     """Built payloads own their push block rather than the level constant."""
-    first = DeliveryManager._build_notify_data(_payload(level="critical", tag=None))
+    first = build_notify_data(_payload(level="critical", tag=None))
     first["data"]["push"]["interruption-level"] = "mutated"
-    second = DeliveryManager._build_notify_data(_payload(level="critical", tag=None))
+    second = build_notify_data(_payload(level="critical", tag=None))
     assert second["data"]["push"] == {"interruption-level": "critical"}
 
 
 def test_build_notify_data_omits_level_fields_for_normal_level() -> None:
     """Normal level adds no push block or Android delivery fields."""
     payload = _payload(tag="tag")
-    data = DeliveryManager._build_notify_data(payload)
+    data = build_notify_data(payload)
     assert data["data"] == {"tag": "tag"}
 
 
@@ -116,7 +120,7 @@ def test_build_notify_data_omits_data_when_empty() -> None:
         message="Message",
         expires_delta=timedelta(),
     )
-    data = DeliveryManager._build_notify_data(payload)
+    data = build_notify_data(payload)
     assert data == {"message": "Message"}
 
 
@@ -205,16 +209,17 @@ def test_resolve_legacy_mobile_app_service(
 
     with (
         patch(
-            "custom_components.smart_notify.delivery.er.async_get",
+            "custom_components.smart_notify.delivery.mobile_app.er.async_get",
             return_value=entity_registry,
         ),
         patch(
-            "custom_components.smart_notify.delivery.dr.async_get",
+            "custom_components.smart_notify.delivery.mobile_app.dr.async_get",
             return_value=device_registry,
         ),
     ):
-        result = delivery_manager._resolve_legacy_mobile_app_service(
-            "notify.daniel_iphone"
+        result = resolve_legacy_mobile_app_service(
+            mock_hass,
+            "notify.daniel_iphone",
         )
 
     assert result == ("notify", "mobile_app_daniel_iphone")
@@ -235,11 +240,12 @@ def test_resolve_legacy_mobile_app_service_returns_none_for_other_platforms(
     entity_registry.async_get.return_value = entity_entry
 
     with patch(
-        "custom_components.smart_notify.delivery.er.async_get",
+        "custom_components.smart_notify.delivery.mobile_app.er.async_get",
         return_value=entity_registry,
     ):
-        result = delivery_manager._resolve_legacy_mobile_app_service(
-            "notify.telegram_bot"
+        result = resolve_legacy_mobile_app_service(
+            mock_hass,
+            "notify.telegram_bot",
         )
 
     assert result is None
@@ -257,9 +263,8 @@ async def test_delivery_entity_with_actions_uses_legacy_service(
     mock_hass.services.has_service.side_effect = _has_legacy_mobile_app_service
     mock_hass.states.get.return_value = MagicMock()
     mock_hass.services.async_call = AsyncMock()
-    with patch.object(
-        delivery_manager,
-        "_resolve_legacy_mobile_app_service",
+    with patch(
+        "custom_components.smart_notify.delivery.manager.resolve_legacy_mobile_app_service",
         return_value=("notify", "mobile_app_daniel_iphone"),
     ):
         await delivery_manager.deliver(
@@ -290,9 +295,8 @@ async def test_delivery_entity_with_level_only_uses_legacy_service(
     mock_hass.services.has_service.side_effect = _has_legacy_mobile_app_service
     mock_hass.states.get.return_value = MagicMock()
     mock_hass.services.async_call = AsyncMock()
-    with patch.object(
-        delivery_manager,
-        "_resolve_legacy_mobile_app_service",
+    with patch(
+        "custom_components.smart_notify.delivery.manager.resolve_legacy_mobile_app_service",
         return_value=("notify", "mobile_app_daniel_iphone"),
     ):
         await delivery_manager.deliver(
@@ -320,9 +324,8 @@ async def test_delivery_entity_with_actions_falls_back_to_plain_send_message(
     mock_hass.services.has_service.return_value = False
     mock_hass.states.get.return_value = MagicMock()
     mock_hass.services.async_call = AsyncMock()
-    with patch.object(
-        delivery_manager,
-        "_resolve_legacy_mobile_app_service",
+    with patch(
+        "custom_components.smart_notify.delivery.manager.resolve_legacy_mobile_app_service",
         return_value=None,
     ):
         await delivery_manager.deliver(

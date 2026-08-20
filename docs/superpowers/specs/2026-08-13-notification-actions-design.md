@@ -145,8 +145,8 @@ Non-`mobile_app` notify entities with `actions`: same fallback behavior (warning
 
 1. Add `ATTR_ACTIONS` to `const.py`.
 2. Add optional `actions` to `SERVICE_SEND_SCHEMA`, `services.yaml`, and `NotificationPayload`.
-3. Coordinator `_build_payload`: read flat mobile fields from top-level service data.
-4. `DeliveryManager._build_notify_data`: assemble notify `data` from flat payload fields.
+3. `coordinator.payload.build_payload`: read flat mobile fields from top-level service data.
+4. `delivery.notify_data.build_notify_data`: assemble notify `data` from flat payload fields.
 5. `DeliveryManager._async_call_notify`: implement entity → legacy fallback when notify `data` is non-empty; remove unconditional data-stripping on entity path.
 6. README: actionable notification example and link to `mobile_app_notification_action`.
 7. Tests for schema, payload build, legacy pass-through, entity resolution, fallback, and queued flush.
