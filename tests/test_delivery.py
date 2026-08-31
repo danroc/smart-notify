@@ -2,46 +2,52 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, field
 from datetime import timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
 
 import pytest
 
 from custom_components.smart_notify.delivery import DeliveryManager
-from custom_components.smart_notify.delivery.mobile_app import (
-    resolve_legacy_mobile_app_service,
-)
 from custom_components.smart_notify.delivery.notify_data import build_notify_data
-from custom_components.smart_notify.models import NotificationPayload, SmartNotifyConfig
-from tests.conftest import make_payload
-
-LEGACY_MOBILE_APP_SERVICE = "mobile_app_daniel_iphone"
+from custom_components.smart_notify.models import SmartNotifyConfig
+from tests.conftest import make_delivery_payload, make_payload
 
 
-def _has_legacy_mobile_app_service(domain: str, service: str) -> bool:
-    return domain == "notify" and service == LEGACY_MOBILE_APP_SERVICE
+@dataclass
+class FakeNotifyPort:
+    """In-memory notify port for testing DeliveryManager in isolation."""
+
+    fail_targets: set[str] = field(default_factory=set)
+    calls: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+
+    async def send(self, target: str, data: dict[str, Any]) -> None:
+        """Record the call, raising for configured failing targets."""
+        if target in self.fail_targets:
+            msg = f"simulated failure for {target}"
+            raise ValueError(msg)
+        self.calls.append((target, data))
 
 
 @pytest.fixture
-def delivery_manager(mock_hass: MagicMock) -> DeliveryManager:
+def notify_port() -> FakeNotifyPort:
+    """Create a fake notify port."""
+    return FakeNotifyPort()
+
+
+@pytest.fixture
+def delivery_manager(notify_port: FakeNotifyPort) -> DeliveryManager:
     """Create a delivery manager."""
     config = SmartNotifyConfig(
         persons=["person.alice"],
         person_services={"person.alice": ["notify.mobile_app_alice"]},
     )
-    return DeliveryManager(mock_hass, config)
-
-
-def _payload(**overrides: object) -> NotificationPayload:
-    """Build a delivery test payload."""
-    base = make_payload("delivery-test", title="Title", message="Message", tag="tag")
-    return replace(base, **overrides) if overrides else base
+    return DeliveryManager(notify_port, config)
 
 
 def test_build_notify_data_merges_actions_tag_and_url() -> None:
     """Top-level fields land in notify data without double nesting."""
-    payload = _payload(
+    payload = make_delivery_payload(
         actions=[{"action": "ACK", "title": "Got it"}],
         url="https://example.com",
         group="alerts",
@@ -61,7 +67,7 @@ def test_build_notify_data_merges_actions_tag_and_url() -> None:
 
 def test_build_notify_data_omits_click_action_without_url() -> None:
     """No tap target is sent when the payload has no url."""
-    data = build_notify_data(_payload(url=None))
+    data = build_notify_data(make_delivery_payload(url=None))
     assert "url" not in data["data"]
     assert "clickAction" not in data["data"]
 
@@ -92,22 +98,22 @@ def test_build_notify_data_maps_level_to_notify_data(
     level: str, expected: dict[str, object]
 ) -> None:
     """Non-normal levels add the iOS push block and Android delivery fields."""
-    payload = _payload(level=level, tag=None)
+    payload = make_delivery_payload(level=level, tag=None)
     data = build_notify_data(payload)
     assert data["data"] == expected
 
 
 def test_build_notify_data_does_not_share_push_dict() -> None:
     """Built payloads own their push block rather than the level constant."""
-    first = build_notify_data(_payload(level="critical", tag=None))
+    first = build_notify_data(make_delivery_payload(level="critical", tag=None))
     first["data"]["push"]["interruption-level"] = "mutated"
-    second = build_notify_data(_payload(level="critical", tag=None))
+    second = build_notify_data(make_delivery_payload(level="critical", tag=None))
     assert second["data"]["push"] == {"interruption-level": "critical"}
 
 
 def test_build_notify_data_omits_level_fields_for_normal_level() -> None:
     """Normal level adds no push block or Android delivery fields."""
-    payload = _payload(tag="tag")
+    payload = make_delivery_payload(tag="tag")
     data = build_notify_data(payload)
     assert data["data"] == {"tag": "tag"}
 
@@ -125,268 +131,56 @@ def test_build_notify_data_omits_data_when_empty() -> None:
 
 
 @pytest.mark.asyncio
-async def test_delivery_legacy_includes_actions(
-    mock_hass: MagicMock,
+async def test_delivery_sends_to_configured_service(
     delivery_manager: DeliveryManager,
+    notify_port: FakeNotifyPort,
 ) -> None:
-    """Legacy notify services receive actions in data.actions."""
-    mock_hass.services.has_service.return_value = True
-    mock_hass.services.async_call = AsyncMock()
-    await delivery_manager.deliver(
-        _payload(actions=[{"action": "ACK", "title": "Got it"}]),
-        ["person.alice"],
-    )
-    call_args = mock_hass.services.async_call.await_args
-    assert call_args is not None
-    notify_data = call_args.args[2]["data"]
-    assert notify_data["actions"] == [{"action": "ACK", "title": "Got it"}]
-    assert notify_data["tag"] == "tag"
-
-
-@pytest.mark.asyncio
-async def test_delivery_calls_legacy_notify_service(
-    mock_hass: MagicMock,
-    delivery_manager: DeliveryManager,
-) -> None:
-    """Deliver through legacy notify services when registered."""
-    mock_hass.services.has_service.return_value = True
-    mock_hass.services.async_call = AsyncMock()
-    record = await delivery_manager.deliver(_payload(), ["person.alice"])
-    assert record.success is True
-    mock_hass.services.async_call.assert_awaited_once()
-    call_args = mock_hass.services.async_call.await_args
-    assert call_args is not None
-    assert call_args.args[0] == "notify"
-    assert call_args.args[1] == "mobile_app_alice"
-
-
-@pytest.mark.asyncio
-async def test_delivery_calls_notify_send_message_for_entity(
-    mock_hass: MagicMock,
-    delivery_manager: DeliveryManager,
-) -> None:
-    """Deliver via notify.send_message when the target is a notify entity."""
-    delivery_manager._config.person_services = {
-        "person.alice": ["notify.daniel_iphone"],
-    }
-    mock_hass.services.has_service.return_value = False
-    mock_hass.states.get.return_value = MagicMock()
-    mock_hass.services.async_call = AsyncMock()
-    record = await delivery_manager.deliver(
-        _payload(tag=None, url=None, group=None),
-        ["person.alice"],
-    )
+    """Deliver through the notify port using the recipient's configured service."""
+    record = await delivery_manager.deliver(make_delivery_payload(), ["person.alice"])
 
     assert record.success is True
-    mock_hass.services.async_call.assert_awaited_once()
-    call_args = mock_hass.services.async_call.await_args
-    assert call_args is not None
-    assert call_args.args[0] == "notify"
-    assert call_args.args[1] == "send_message"
-    assert call_args.args[2] == {"message": "Message", "title": "Title"}
-    assert call_args.kwargs["target"] == {"entity_id": "notify.daniel_iphone"}
-
-
-def test_resolve_legacy_mobile_app_service(
-    mock_hass: MagicMock,
-    delivery_manager: DeliveryManager,
-) -> None:
-    """Map a mobile_app notify entity to its legacy notify service name."""
-    entity_entry = MagicMock()
-    entity_entry.platform = "mobile_app"
-    entity_entry.device_id = "device-uuid"
-
-    device = MagicMock()
-    device.name = "Daniel iPhone"
-
-    entity_registry = MagicMock()
-    entity_registry.async_get.return_value = entity_entry
-
-    device_registry = MagicMock()
-    device_registry.async_get.return_value = device
-
-    mock_hass.services.has_service.side_effect = _has_legacy_mobile_app_service
-
-    with (
-        patch(
-            "custom_components.smart_notify.delivery.mobile_app.er.async_get",
-            return_value=entity_registry,
-        ),
-        patch(
-            "custom_components.smart_notify.delivery.mobile_app.dr.async_get",
-            return_value=device_registry,
-        ),
-    ):
-        result = resolve_legacy_mobile_app_service(
-            mock_hass,
-            "notify.daniel_iphone",
-        )
-
-    assert result == ("notify", "mobile_app_daniel_iphone")
-    entity_registry.async_get.assert_called_once_with("notify.daniel_iphone")
-    device_registry.async_get.assert_called_once_with("device-uuid")
-
-
-def test_resolve_legacy_mobile_app_service_returns_none_for_other_platforms(
-    mock_hass: MagicMock,
-    delivery_manager: DeliveryManager,
-) -> None:
-    """Only mobile_app notify entities can resolve to legacy services."""
-    entity_entry = MagicMock()
-    entity_entry.platform = "telegram"
-    entity_entry.device_id = "device-uuid"
-
-    entity_registry = MagicMock()
-    entity_registry.async_get.return_value = entity_entry
-
-    with patch(
-        "custom_components.smart_notify.delivery.mobile_app.er.async_get",
-        return_value=entity_registry,
-    ):
-        result = resolve_legacy_mobile_app_service(
-            mock_hass,
-            "notify.telegram_bot",
-        )
-
-    assert result is None
-
-
-@pytest.mark.asyncio
-async def test_delivery_entity_with_actions_uses_legacy_service(
-    mock_hass: MagicMock,
-    delivery_manager: DeliveryManager,
-) -> None:
-    """Resolve notify entities to legacy mobile_app services for rich payloads."""
-    delivery_manager._config.person_services = {
-        "person.alice": ["notify.daniel_iphone"],
-    }
-    mock_hass.services.has_service.side_effect = _has_legacy_mobile_app_service
-    mock_hass.states.get.return_value = MagicMock()
-    mock_hass.services.async_call = AsyncMock()
-    with patch(
-        "custom_components.smart_notify.delivery.manager.resolve_legacy_mobile_app_service",
-        return_value=("notify", "mobile_app_daniel_iphone"),
-    ):
-        await delivery_manager.deliver(
-            _payload(
-                actions=[{"action": "ACK", "title": "Got it"}],
-                url=None,
-                group=None,
-            ),
-            ["person.alice"],
-        )
-
-    call_args = mock_hass.services.async_call.await_args
-    assert call_args is not None
-    assert call_args.args[0:2] == ("notify", LEGACY_MOBILE_APP_SERVICE)
-    actions = call_args.args[2]["data"]["actions"]
-    assert actions == [{"action": "ACK", "title": "Got it"}]
-
-
-@pytest.mark.asyncio
-async def test_delivery_entity_with_level_only_uses_legacy_service(
-    mock_hass: MagicMock,
-    delivery_manager: DeliveryManager,
-) -> None:
-    """Level alone is enough to require the legacy mobile_app notify path."""
-    delivery_manager._config.person_services = {
-        "person.alice": ["notify.daniel_iphone"],
-    }
-    mock_hass.services.has_service.side_effect = _has_legacy_mobile_app_service
-    mock_hass.states.get.return_value = MagicMock()
-    mock_hass.services.async_call = AsyncMock()
-    with patch(
-        "custom_components.smart_notify.delivery.manager.resolve_legacy_mobile_app_service",
-        return_value=("notify", "mobile_app_daniel_iphone"),
-    ):
-        await delivery_manager.deliver(
-            _payload(level="critical", tag=None, url=None, group=None),
-            ["person.alice"],
-        )
-
-    call_args = mock_hass.services.async_call.await_args
-    assert call_args is not None
-    assert call_args.args[0:2] == ("notify", LEGACY_MOBILE_APP_SERVICE)
-    assert call_args.args[2]["data"]["push"] == {"interruption-level": "critical"}
-    assert call_args.args[2]["data"]["priority"] == "high"
-    assert call_args.args[2]["data"]["ttl"] == 0
-
-
-@pytest.mark.asyncio
-async def test_delivery_entity_with_actions_falls_back_to_plain_send_message(
-    mock_hass: MagicMock,
-    delivery_manager: DeliveryManager,
-) -> None:
-    """Drop actions when a notify entity cannot resolve to a legacy service."""
-    delivery_manager._config.person_services = {
-        "person.alice": ["notify.daniel_iphone"],
-    }
-    mock_hass.services.has_service.return_value = False
-    mock_hass.states.get.return_value = MagicMock()
-    mock_hass.services.async_call = AsyncMock()
-    with patch(
-        "custom_components.smart_notify.delivery.manager.resolve_legacy_mobile_app_service",
-        return_value=None,
-    ):
-        await delivery_manager.deliver(
-            _payload(
-                actions=[{"action": "ACK", "title": "Got it"}],
-                url=None,
-                group=None,
-            ),
-            ["person.alice"],
-        )
-
-    call_args = mock_hass.services.async_call.await_args
-    assert call_args is not None
-    assert call_args.args[0:2] == ("notify", "send_message")
-    assert call_args.args[2] == {"message": "Message", "title": "Title"}
+    assert record.services == ["notify.mobile_app_alice"]
+    assert len(notify_port.calls) == 1
+    target, data = notify_port.calls[0]
+    assert target == "notify.mobile_app_alice"
+    assert data["message"] == "Message"
+    assert data["data"]["tag"] == "tag"
 
 
 @pytest.mark.asyncio
 async def test_delivery_fails_when_target_missing(
-    mock_hass: MagicMock,
     delivery_manager: DeliveryManager,
+    notify_port: FakeNotifyPort,
 ) -> None:
-    """Fail clearly when the target is neither a service nor a notify entity."""
+    """Fail clearly when the notify port cannot reach the target."""
     delivery_manager._config.person_services = {
         "person.alice": ["notify.missing"],
     }
-    mock_hass.services.has_service.return_value = False
-    mock_hass.states.get.return_value = None
-    mock_hass.services.async_call = AsyncMock()
-    record = await delivery_manager.deliver(_payload(), ["person.alice"])
+    notify_port.fail_targets = {"notify.missing"}
+
+    record = await delivery_manager.deliver(make_delivery_payload(), ["person.alice"])
 
     assert record.success is False
     assert record.services == []
     assert record.error is not None
     assert "notify.missing" in record.error
-    mock_hass.services.async_call.assert_not_awaited()
+    assert notify_port.calls == []
 
 
 @pytest.mark.asyncio
 async def test_partial_delivery_counts_as_success(
-    mock_hass: MagicMock,
     delivery_manager: DeliveryManager,
+    notify_port: FakeNotifyPort,
 ) -> None:
     """At least one successful notify service is enough for success."""
     delivery_manager._config.person_services = {
         "person.alice": ["notify.ok", "notify.bad"],
     }
-    mock_hass.services.has_service.return_value = True
+    notify_port.fail_targets = {"notify.bad"}
 
-    async def _call(
-        domain: str,
-        service: str,
-        *_args: object,
-        **_kwargs: object,
-    ) -> None:
-        if service == "bad":
-            msg = "fail"
-            raise RuntimeError(msg)
+    record = await delivery_manager.deliver(make_delivery_payload(), ["person.alice"])
 
-    mock_hass.services.async_call = AsyncMock(side_effect=_call)
-    record = await delivery_manager.deliver(_payload(), ["person.alice"])
     assert record.success is True
     assert record.services == ["notify.ok"]
     assert record.error is not None
+    assert "notify.bad" in record.error

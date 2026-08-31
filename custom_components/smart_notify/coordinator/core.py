@@ -21,7 +21,7 @@ from ..const import (
     EVENT_SENT,
     LOGGER_NAME,
 )
-from ..delivery import DeliveryManager
+from ..delivery import DeliveryManager, HassNotifyPort
 from ..events import fire_event
 from ..listeners import EventListener
 from ..models import DeliveryRecord, NotificationPayload, SmartNotifyConfig
@@ -49,7 +49,7 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._storage = storage
         self._resolver = RecipientResolver(hass, config.persons)
         self._queue = QueueManager(storage)
-        self._delivery = DeliveryManager(hass, config)
+        self._delivery = DeliveryManager(HassNotifyPort(hass), config)
         self._listener = EventListener(hass, config.persons)
         self._delivered_today = 0
         self._failed_today = 0

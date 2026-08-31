@@ -65,6 +65,12 @@ def make_payload(
     return replace(base, **overrides) if overrides else base
 
 
+def make_delivery_payload(**overrides: object) -> NotificationPayload:
+    """Build a notification payload for delivery tests, overriding any field."""
+    base = make_payload("delivery-test", tag="tag")
+    return replace(base, **overrides) if overrides else base
+
+
 @pytest.fixture
 def mock_hass() -> MagicMock:
     """Create a mocked Home Assistant instance."""
