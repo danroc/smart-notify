@@ -59,10 +59,9 @@ class HassNotifyPort:
         data: dict[str, Any],
     ) -> None:
         """Deliver to a notify entity with legacy fallback for rich payloads."""
-        # notify.send_message only accepts message/title; HA has no entity-based
-        # way to deliver actions/critical alerts/images yet (home-assistant
-        # discussion #3684), so the legacy per-device service is the only way
-        # to preserve rich data.
+        # notify.send_message only accepts message/title; HA has no entity-based way to
+        # deliver actions/critical alerts/images yet (home-assistant discussion #3684),
+        # so the legacy per-device service is the only way to preserve rich data.
         if has_rich_notify_data(data):
             legacy_service = resolve_legacy_mobile_app_service(self._hass, target)
             if legacy_service is not None:
