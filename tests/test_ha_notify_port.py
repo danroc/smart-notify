@@ -43,6 +43,7 @@ async def test_send_calls_legacy_notify_service(
 
     mock_hass.services.async_call.assert_awaited_once()
     call_args = mock_hass.services.async_call.await_args
+    assert call_args is not None
     assert call_args.args[0] == "notify"
     assert call_args.args[1] == "mobile_app_alice"
 
@@ -62,6 +63,7 @@ async def test_send_legacy_notify_service_includes_actions(
     )
 
     call_args = mock_hass.services.async_call.await_args
+    assert call_args is not None
     notify_data = call_args.args[2]["data"]
     assert notify_data["actions"] == [{"action": "ACK", "title": "Got it"}]
     assert notify_data["tag"] == "tag"
@@ -84,6 +86,7 @@ async def test_send_calls_notify_send_message_for_entity(
 
     mock_hass.services.async_call.assert_awaited_once()
     call_args = mock_hass.services.async_call.await_args
+    assert call_args is not None
     assert call_args.args[0] == "notify"
     assert call_args.args[1] == "send_message"
     assert call_args.args[2] == {"message": "Message", "title": "Title"}
@@ -111,6 +114,7 @@ async def test_send_entity_with_actions_uses_legacy_service(
         )
 
     call_args = mock_hass.services.async_call.await_args
+    assert call_args is not None
     assert call_args.args[0:2] == ("notify", LEGACY_MOBILE_APP_SERVICE)
     actions = call_args.args[2]["data"]["actions"]
     assert actions == [{"action": "ACK", "title": "Got it"}]
@@ -137,6 +141,7 @@ async def test_send_entity_with_level_only_uses_legacy_service(
         )
 
     call_args = mock_hass.services.async_call.await_args
+    assert call_args is not None
     assert call_args.args[0:2] == ("notify", LEGACY_MOBILE_APP_SERVICE)
     assert call_args.args[2]["data"]["push"] == {"interruption-level": "critical"}
     assert call_args.args[2]["data"]["priority"] == "high"
@@ -164,6 +169,7 @@ async def test_send_entity_with_actions_falls_back_to_plain_send_message(
         )
 
     call_args = mock_hass.services.async_call.await_args
+    assert call_args is not None
     assert call_args.args[0:2] == ("notify", "send_message")
     assert call_args.args[2] == {"message": "Message", "title": "Title"}
 
