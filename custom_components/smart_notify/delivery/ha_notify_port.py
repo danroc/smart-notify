@@ -44,12 +44,14 @@ class HassNotifyPort:
         domain: str,
         service_name: str,
         data: dict[str, Any],
+        target: dict[str, Any] | None = None,
     ) -> None:
         """Call a Home Assistant service with blocking delivery."""
         await self._hass.services.async_call(
             domain,
             service_name,
             data,
+            target=target,
             blocking=True,
         )
 
@@ -75,10 +77,9 @@ class HassNotifyPort:
                 target,
             )
 
-        await self._hass.services.async_call(
+        await self._async_call_service(
             "notify",
             "send_message",
             build_send_message_data(data),
             target={"entity_id": target},
-            blocking=True,
         )
