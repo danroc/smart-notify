@@ -58,6 +58,7 @@ class DeliveryManager:
                     recipient,
                     service,
                 )
+
                 try:
                     await self._notify_port.send(service, data)
                     services_used.append(service)
@@ -66,12 +67,11 @@ class DeliveryManager:
                     _LOGGER.exception(message)
                     errors.append(message)
 
-        success = bool(services_used)
         return DeliveryRecord(
             notification_id=payload.id,
             recipients=recipients,
             services=services_used,
             delivered_at=dt_util.utcnow(),
-            success=success,
+            success=bool(services_used),
             error="; ".join(errors) if errors else None,
         )
