@@ -44,6 +44,7 @@ LEVEL_NORMAL: Final = "normal"
 LEVEL_IMPORTANT: Final = "important"
 LEVEL_CRITICAL: Final = "critical"
 DEFAULT_LEVEL: Final = LEVEL_NORMAL
+
 # Notify data merged in per level. `push` is read by iOS only, `priority` and
 # `ttl` by Android only. Android channel `importance` is deliberately never set:
 # it is write-once per channel, so applying it to the shared default channel
@@ -64,6 +65,7 @@ LEVEL_NOTIFY_DATA: Final[dict[str, dict[str, Any]]] = {
         "push": {"interruption-level": "critical"},
     },
 }
+
 LEVEL_CHOICES: Final = list(LEVEL_NOTIFY_DATA)
 LEVEL_LABELS: Final = {
     LEVEL_SILENT: "Silent",
