@@ -12,16 +12,14 @@ from ..util import compact_dict
 
 def has_rich_notify_data(data: dict[str, Any]) -> bool:
     """Return whether the notify call includes a non-empty data block."""
-    notify_data = data.get("data")
-    return bool(notify_data)
+    return bool(data.get("data"))
 
 
 def build_send_message_data(data: dict[str, Any]) -> dict[str, Any]:
     """Build the payload used by ``notify.send_message``."""
-    send_data: dict[str, Any] = {"message": data["message"]}
-    if "title" in data:
-        send_data["title"] = data["title"]
-    return send_data
+    return {"message": data["message"]} | compact_dict([
+        ("title", data.get("title")),
+    ])
 
 
 def build_notify_data(payload: NotificationPayload) -> dict[str, Any]:
