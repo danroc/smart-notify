@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 from ..const import LEVEL_NOTIFY_DATA
 from ..models import NotificationPayload
+from ..util import compact_dict
 
 
 def has_rich_notify_data(data: dict[str, Any]) -> bool:
@@ -24,29 +26,25 @@ def build_send_message_data(data: dict[str, Any]) -> dict[str, Any]:
 
 def build_notify_data(payload: NotificationPayload) -> dict[str, Any]:
     """Build notify service data from a payload."""
-    data: dict[str, Any] = {"message": payload.message}
-    if payload.title:
-        data["title"] = payload.title
+    # Copy so callers never receive the module-level constant itself.
+    level_data = copy.deepcopy(LEVEL_NOTIFY_DATA[payload.level])
 
-    notify_data: dict[str, Any] = {
-        key: value
-        for key, value in (
-            ("group", payload.group),
-            ("image", payload.image),
-            # iOS reads the tap target from `url`, Android from `clickAction`.
-            ("url", payload.url),
-            ("clickAction", payload.url),
-            ("tag", payload.tag),
-        )
-        if value
-    }
-    if payload.actions:
-        notify_data["actions"] = payload.actions
-    level_data = LEVEL_NOTIFY_DATA[payload.level]
-    notify_data.update(level_data)
-    if push := level_data.get("push"):
-        # Copy so callers never receive the module-level constant itself.
-        notify_data["push"] = dict(push)
-    if notify_data:
-        data["data"] = notify_data
+    notify_data = level_data | compact_dict([
+        ("group", payload.group),
+        ("image", payload.image),
+        # iOS reads the tap target from `url`, Android from `clickAction`.
+        ("url", payload.url),
+        ("clickAction", payload.url),
+        ("tag", payload.tag),
+        ("actions", payload.actions),
+    ])
+
+    data: dict[str, Any] = {"message": payload.message}
+    data.update(
+        compact_dict([
+            ("title", payload.title),
+            ("data", notify_data),
+        ])
+    )
+
     return data

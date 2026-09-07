@@ -130,6 +130,18 @@ def test_build_notify_data_omits_data_when_empty() -> None:
     assert data == {"message": "Message"}
 
 
+def test_build_notify_data_keeps_message_key_when_empty() -> None:
+    """The message key is always present, even if its value is empty."""
+    payload = make_payload(
+        "empty-message",
+        title=None,
+        message="",
+        expires_delta=timedelta(),
+    )
+    data = build_notify_data(payload)
+    assert data == {"message": ""}
+
+
 @pytest.mark.asyncio
 async def test_delivery_sends_to_configured_service(
     delivery_manager: DeliveryManager,

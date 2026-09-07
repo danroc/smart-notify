@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Iterable
 from datetime import datetime, timedelta
+from typing import Any
 
 from homeassistant.const import (
     ATTR_LATITUDE,
@@ -19,6 +21,11 @@ from homeassistant.util import location as location_util
 from .const import LOG_LEVELS, LOGGER_NAME, STRATEGIES_QUEUE_BY_DEFAULT
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
+
+
+def compact_dict(pairs: Iterable[tuple[str, Any]]) -> dict[str, Any]:
+    """Build a dict from key/value pairs, dropping empty values."""
+    return {key: value for key, value in pairs if value}
 
 
 def configure_logging(level_name: str) -> None:
