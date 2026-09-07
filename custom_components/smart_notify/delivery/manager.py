@@ -30,28 +30,18 @@ class DeliveryManager:
         """Update runtime configuration."""
         self._config = config
 
-    def services_for_recipients(self, recipients: list[str]) -> dict[str, list[str]]:
-        """Map recipients to configured notify targets (entities or legacy services)."""
-        mapping: dict[str, list[str]] = {}
-        for recipient in recipients:
-            services = self._config.person_services.get(recipient, [])
-            if services:
-                mapping[recipient] = list(services)
-        return mapping
-
     async def deliver(
         self,
         payload: NotificationPayload,
         recipients: list[str],
     ) -> DeliveryRecord:
         """Deliver a notification to recipients."""
-        service_map = self.services_for_recipients(recipients)
         services_used: list[str] = []
         errors: list[str] = []
         data = build_notify_data(payload)
 
-        for recipient, services in service_map.items():
-            for service in services:
+        for recipient in recipients:
+            for service in self._config.person_services.get(recipient, []):
                 _LOGGER.debug(
                     "Delivering notification %s to %s via %s",
                     payload.id,
