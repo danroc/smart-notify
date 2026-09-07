@@ -16,6 +16,7 @@ from pytest_homeassistant_custom_component.common import (
 
 from custom_components.smart_notify.const import (
     DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
+    DEFAULT_DEPARTURE_DEBOUNCE_SECONDS,
     DOMAIN,
 )
 from custom_components.smart_notify.models import DeliveryRecord, NotificationPayload
@@ -36,6 +37,62 @@ async def _advance_arrival_debounce(
     freezer.tick(timedelta(seconds=seconds))
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
+
+
+async def _advance_departure_debounce(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    seconds: int = DEFAULT_DEPARTURE_DEBOUNCE_SECONDS,
+) -> None:
+    """Advance time past the departure debounce window."""
+    freezer.tick(timedelta(seconds=seconds))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+
+@pytest.mark.asyncio
+async def test_person_departure_flushes_queue_after_debounce(
+    hass: HomeAssistant,
+    smart_notify_config_entry: MockConfigEntry,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Queued departure notifications deliver after the departure debounce window."""
+    set_person_home(hass, "person.alice")
+    await hass.services.async_call(
+        DOMAIN,
+        "send",
+        {
+            "message": "Take the umbrella",
+            "strategy": "departure",
+        },
+        blocking=True,
+    )
+    coordinator = hass.data[DOMAIN]["coordinator"]
+    assert coordinator.pending_count() == 1
+
+    set_person_away(hass, "person.alice")
+    record = DeliveryRecord(
+        notification_id="queued",
+        recipients=["person.alice"],
+        services=["notify.mobile_app_alice"],
+        delivered_at=dt_util.utcnow(),
+        success=True,
+    )
+    with patch.object(
+        coordinator._delivery,
+        "deliver",
+        AsyncMock(return_value=record),
+    ):
+        await coordinator._async_on_person_departure(
+            "person.alice",
+            State("person.alice", "home"),
+            State("person.alice", "not_home"),
+        )
+        assert coordinator.pending_count() == 1
+        await _advance_departure_debounce(hass, freezer)
+
+    assert coordinator.pending_count() == 0
+    assert coordinator.delivered_today() == 1
 
 
 @pytest.mark.asyncio

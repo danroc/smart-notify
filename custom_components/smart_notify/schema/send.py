@@ -95,7 +95,8 @@ SEND_FIELDS: tuple[SendField, ...] = (
             "at home now; away: people away now; closest: people within tolerance "
             "of the closest distance to home (queues when nobody has a usable "
             "location); arrival: people at home now, otherwise queue until "
-            "someone arrives."
+            "someone arrives; departure: people away now, otherwise queue until "
+            "someone leaves."
         ),
         selector=strategy_selector(),
         example="closest",

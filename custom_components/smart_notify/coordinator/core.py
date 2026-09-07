@@ -54,7 +54,7 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._delivered_today = 0
         self._failed_today = 0
         self._today = dt_util.utcnow().date()
-        self._arrival_debounce_unsub: Callable[[], None] | None = None
+        self._debounce_unsubs: dict[str, Callable[[], None]] = {}
 
     @property
     def config(self) -> SmartNotifyConfig:
@@ -94,6 +94,7 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Set up coordinator resources."""
         await self._storage.async_load()
         self._listener.set_arrival_callback(self._async_on_person_arrival)
+        self._listener.set_departure_callback(self._async_on_person_departure)
         await self._listener.async_start()
         await self._async_expire_notifications()
         await self._async_flush_queue(refresh=False)
@@ -101,7 +102,8 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_shutdown(self) -> None:
         """Shut down coordinator resources."""
-        self._cancel_arrival_debounce()
+        for kind in list(self._debounce_unsubs):
+            self._cancel_debounce(kind)
         await self._listener.async_stop()
 
     def update_config(self, config: SmartNotifyConfig) -> None:
@@ -156,31 +158,48 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         _new_state: State,
     ) -> None:
         """Debounce queue flush when a person arrives home."""
-        delay = self._config.arrival_debounce_seconds
+        self._schedule_debounce(
+            "arrival", self._config.arrival_debounce_seconds, entity_id
+        )
+
+    async def _async_on_person_departure(
+        self,
+        entity_id: str,
+        _old_state: State,
+        _new_state: State,
+    ) -> None:
+        """Debounce queue flush when a person leaves home."""
+        self._schedule_debounce(
+            "departure", self._config.departure_debounce_seconds, entity_id
+        )
+
+    def _schedule_debounce(self, kind: str, delay: int, entity_id: str) -> None:
+        """Schedule a debounced flush, replacing any pending timer of this kind."""
         _LOGGER.debug(
-            "Scheduling queue evaluation after arrival of %s (debounce %ss)",
+            "Scheduling queue evaluation after %s of %s (debounce %ss)",
+            kind,
             entity_id,
             delay,
         )
-        self._cancel_arrival_debounce()
+        self._cancel_debounce(kind)
 
         @callback
         def _run_flush(_now: datetime) -> None:
-            self._arrival_debounce_unsub = None
-            self.hass.async_create_task(self._async_flush_after_arrival())
+            self._debounce_unsubs.pop(kind, None)
+            self.hass.async_create_task(self._async_flush_after_debounce())
 
-        self._arrival_debounce_unsub = async_call_later(self.hass, delay, _run_flush)
+        self._debounce_unsubs[kind] = async_call_later(self.hass, delay, _run_flush)
 
-    async def _async_flush_after_arrival(self) -> None:
-        """Expire and flush the queue after the arrival debounce window."""
+    def _cancel_debounce(self, kind: str) -> None:
+        """Cancel a pending debounce timer of this kind, if any."""
+        unsub = self._debounce_unsubs.pop(kind, None)
+        if unsub is not None:
+            unsub()
+
+    async def _async_flush_after_debounce(self) -> None:
+        """Expire and flush the queue after a debounce window."""
         await self._async_expire_notifications()
         await self._async_flush_queue()
-
-    def _cancel_arrival_debounce(self) -> None:
-        """Cancel a pending arrival debounce timer."""
-        if self._arrival_debounce_unsub is not None:
-            self._arrival_debounce_unsub()
-            self._arrival_debounce_unsub = None
 
     async def _async_flush_queue(self, *, refresh: bool = True) -> None:
         """Attempt delivery for all pending queued notifications."""

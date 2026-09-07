@@ -12,6 +12,7 @@ from ..const import (
     CONF_DEFAULT_EXPIRE_AFTER,
     CONF_DEFAULT_STRATEGY,
     CONF_DEFAULT_TOLERANCE,
+    CONF_DEPARTURE_DEBOUNCE_SECONDS,
     CONF_LOG_LEVEL,
     CONF_PERSON_SERVICES,
     CONF_PERSONS,
@@ -53,6 +54,9 @@ class SmartNotifyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_DEFAULT_EXPIRE_AFTER: user_input[CONF_DEFAULT_EXPIRE_AFTER],
                     CONF_ARRIVAL_DEBOUNCE_SECONDS: int(
                         user_input[CONF_ARRIVAL_DEBOUNCE_SECONDS]
+                    ),
+                    CONF_DEPARTURE_DEBOUNCE_SECONDS: int(
+                        user_input[CONF_DEPARTURE_DEBOUNCE_SECONDS]
                     ),
                     CONF_LOG_LEVEL: user_input[CONF_LOG_LEVEL],
                 }

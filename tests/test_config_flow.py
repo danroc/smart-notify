@@ -13,6 +13,7 @@ from custom_components.smart_notify.const import (
     CONF_DEFAULT_EXPIRE_AFTER,
     CONF_DEFAULT_STRATEGY,
     CONF_DEFAULT_TOLERANCE,
+    CONF_DEPARTURE_DEBOUNCE_SECONDS,
     CONF_LOG_LEVEL,
     CONF_PERSON_SERVICES,
     CONF_PERSONS,
@@ -47,6 +48,7 @@ async def test_config_flow_user_step(hass: HomeAssistant) -> None:
             CONF_DEFAULT_TOLERANCE: 500,
             CONF_DEFAULT_EXPIRE_AFTER: "4h",
             CONF_ARRIVAL_DEBOUNCE_SECONDS: 30,
+            CONF_DEPARTURE_DEBOUNCE_SECONDS: 30,
             CONF_LOG_LEVEL: "info",
         },
     )

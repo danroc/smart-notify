@@ -22,6 +22,7 @@ CONF_DEFAULT_TOLERANCE: Final = "default_tolerance"
 CONF_DEFAULT_EXPIRE_AFTER: Final = "default_expire_after"
 CONF_LOG_LEVEL: Final = "log_level"
 CONF_ARRIVAL_DEBOUNCE_SECONDS: Final = "arrival_debounce_seconds"
+CONF_DEPARTURE_DEBOUNCE_SECONDS: Final = "departure_debounce_seconds"
 
 SERVICE_SEND: Final = "send"
 
@@ -75,6 +76,7 @@ DEFAULT_STRATEGY: Final = "closest"
 DEFAULT_TOLERANCE: Final = 500
 DEFAULT_EXPIRE_AFTER: Final = "4h"
 DEFAULT_ARRIVAL_DEBOUNCE_SECONDS: Final = 30
+DEFAULT_DEPARTURE_DEBOUNCE_SECONDS: Final = 30
 
 QUEUE_STATUS_PENDING: Final = "pending"
 QUEUE_STATUS_DELIVERED: Final = "delivered"
@@ -105,6 +107,7 @@ STRATEGY_HOME: Final = "home"
 STRATEGY_AWAY: Final = "away"
 STRATEGY_CLOSEST: Final = "closest"
 STRATEGY_ARRIVAL: Final = "arrival"
+STRATEGY_DEPARTURE: Final = "departure"
 
 STRATEGY_CHOICES: Final = [
     STRATEGY_DIRECT,
@@ -112,6 +115,7 @@ STRATEGY_CHOICES: Final = [
     STRATEGY_AWAY,
     STRATEGY_CLOSEST,
     STRATEGY_ARRIVAL,
+    STRATEGY_DEPARTURE,
 ]
 STRATEGY_LABELS: Final = {
     STRATEGY_DIRECT: "Direct",
@@ -119,8 +123,13 @@ STRATEGY_LABELS: Final = {
     STRATEGY_AWAY: "Away",
     STRATEGY_CLOSEST: "Closest",
     STRATEGY_ARRIVAL: "Arrival",
+    STRATEGY_DEPARTURE: "Departure",
 }
 
-STRATEGIES_QUEUE_BY_DEFAULT: Final = frozenset({STRATEGY_ARRIVAL, STRATEGY_CLOSEST})
+STRATEGIES_QUEUE_BY_DEFAULT: Final = frozenset({
+    STRATEGY_ARRIVAL,
+    STRATEGY_CLOSEST,
+    STRATEGY_DEPARTURE,
+})
 
 PLATFORMS: Final = ["sensor"]

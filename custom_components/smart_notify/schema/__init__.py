@@ -18,6 +18,7 @@ from __future__ import annotations
 from .defaults import defaults_schema_fields
 from .selectors import (
     arrival_debounce_selector,
+    departure_debounce_selector,
     duration_selector,
     level_selector,
     log_level_selector,
@@ -72,6 +73,7 @@ __all__ = [
     "arrival_debounce_selector",
     "cv_duration",
     "defaults_schema_fields",
+    "departure_debounce_selector",
     "duration_selector",
     "level_selector",
     "log_level_selector",

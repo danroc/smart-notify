@@ -11,6 +11,7 @@ from custom_components.smart_notify.strategies.arrival import ArrivalStrategy
 from custom_components.smart_notify.strategies.away import AwayStrategy
 from custom_components.smart_notify.strategies.base import StrategyContext
 from custom_components.smart_notify.strategies.closest import ClosestStrategy
+from custom_components.smart_notify.strategies.departure import DepartureStrategy
 from custom_components.smart_notify.strategies.direct import DirectStrategy
 from custom_components.smart_notify.strategies.home import HomeStrategy
 from tests.conftest import make_person
@@ -25,7 +26,7 @@ def hass(mock_hass: MagicMock) -> MagicMock:
 def test_strategy_registry_contains_all_strategies() -> None:
     """Ensure all strategies are registered under the single-word names."""
     names = registry.names()
-    assert names == ["arrival", "away", "closest", "direct", "home"]
+    assert names == ["arrival", "away", "closest", "departure", "direct", "home"]
     assert "everyone" not in names
     assert "everyone_home" not in names
     assert "everyone_away" not in names
@@ -137,3 +138,23 @@ def test_away_includes_zone_states(hass: MagicMock) -> None:
     context = StrategyContext(hass=hass, persons=persons, params={})
     recipients = AwayStrategy().select_recipients(context)
     assert recipients == ["person.alice", "person.carol"]
+
+
+def test_away_and_departure_select_the_same_people(hass: MagicMock) -> None:
+    """Away and departure share presence selection; queueing is the only difference."""
+    persons = [
+        make_person("person.alice", "home", 48.8566, 2.3522),
+        make_person("person.bob", "not_home", 48.9000, 2.3522),
+    ]
+    context = StrategyContext(hass=hass, persons=persons, params={})
+    away = AwayStrategy().select_recipients(context)
+    departure = DepartureStrategy().select_recipients(context)
+    assert away == departure
+
+
+def test_departure_empty_when_everyone_home(hass: MagicMock) -> None:
+    """Departure with everyone home returns no recipients."""
+    persons = [make_person("person.alice", "home", 48.8566, 2.3522)]
+    context = StrategyContext(hass=hass, persons=persons, params={})
+    recipients = DepartureStrategy().select_recipients(context)
+    assert recipients == []

@@ -16,7 +16,20 @@ from .const import HOME_STATES, LOGGER_NAME
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 
-PersonArrivalCallback = Callable[[str, State, State], Awaitable[None]]
+PersonTransitionCallback = Callable[[str, State, State], Awaitable[None]]
+
+
+def _classify_transition(old_value: str, new_value: str) -> str | None:
+    """Return "arrival", "departure", or None for a person state transition."""
+    if old_value in {STATE_UNAVAILABLE, STATE_UNKNOWN}:
+        return None
+    if new_value in {STATE_UNAVAILABLE, STATE_UNKNOWN}:
+        return None
+    if old_value not in HOME_STATES and new_value in HOME_STATES:
+        return "arrival"
+    if old_value in HOME_STATES and new_value not in HOME_STATES:
+        return "departure"
+    return None
 
 
 class EventListener:
@@ -27,11 +40,16 @@ class EventListener:
         self._hass = hass
         self._person_ids = person_ids
         self._unsubscribes: list[Callable[[], None]] = []
-        self._arrival_callback: PersonArrivalCallback | None = None
+        self._arrival_callback: PersonTransitionCallback | None = None
+        self._departure_callback: PersonTransitionCallback | None = None
 
-    def set_arrival_callback(self, callback_func: PersonArrivalCallback) -> None:
+    def set_arrival_callback(self, callback_func: PersonTransitionCallback) -> None:
         """Set callback for person arrival events."""
         self._arrival_callback = callback_func
+
+    def set_departure_callback(self, callback_func: PersonTransitionCallback) -> None:
+        """Set callback for person departure events."""
+        self._departure_callback = callback_func
 
     async def async_update_persons(self, person_ids: list[str]) -> None:
         """Update tracked person entities and resubscribe."""
@@ -66,22 +84,25 @@ class EventListener:
         if old_state is None or new_state is None:
             return
 
-        old_value = old_state.state
-        new_value = new_state.state
-
-        if old_value in {STATE_UNAVAILABLE, STATE_UNKNOWN}:
+        transition = _classify_transition(old_state.state, new_state.state)
+        if transition is None:
             return
 
-        if old_value not in HOME_STATES and new_value in HOME_STATES:
-            _LOGGER.debug(
-                "Person arrival detected: %s (%s -> %s)",
-                new_state.entity_id,
-                old_value,
-                new_value,
-            )
+        _LOGGER.debug(
+            "Person %s detected: %s (%s -> %s)",
+            transition,
+            new_state.entity_id,
+            old_state.state,
+            new_state.state,
+        )
 
-            if self._arrival_callback is not None:
-                await self._arrival_callback(new_state.entity_id, old_state, new_state)
+        callback_func = (
+            self._arrival_callback
+            if transition == "arrival"
+            else self._departure_callback
+        )
+        if callback_func is not None:
+            await callback_func(new_state.entity_id, old_state, new_state)
 
     async def async_stop(self) -> None:
         """Stop all listeners."""

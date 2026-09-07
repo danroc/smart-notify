@@ -11,10 +11,12 @@ from ..const import (
     CONF_DEFAULT_EXPIRE_AFTER,
     CONF_DEFAULT_STRATEGY,
     CONF_DEFAULT_TOLERANCE,
+    CONF_DEPARTURE_DEBOUNCE_SECONDS,
     CONF_LOG_LEVEL,
     CONF_PERSON_SERVICES,
     CONF_PERSONS,
     DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
+    DEFAULT_DEPARTURE_DEBOUNCE_SECONDS,
     DEFAULT_EXPIRE_AFTER,
     DEFAULT_LOG_LEVEL,
     DEFAULT_STRATEGY,
@@ -33,6 +35,7 @@ class SmartNotifyConfig:
     default_expire_after: str = DEFAULT_EXPIRE_AFTER
     log_level: str = DEFAULT_LOG_LEVEL
     arrival_debounce_seconds: int = DEFAULT_ARRIVAL_DEBOUNCE_SECONDS
+    departure_debounce_seconds: int = DEFAULT_DEPARTURE_DEBOUNCE_SECONDS
 
     @classmethod
     def from_entry_data(cls, data: Mapping[str, Any]) -> SmartNotifyConfig:
@@ -54,6 +57,11 @@ class SmartNotifyConfig:
                     CONF_ARRIVAL_DEBOUNCE_SECONDS, DEFAULT_ARRIVAL_DEBOUNCE_SECONDS
                 )
             ),
+            departure_debounce_seconds=int(
+                data.get(
+                    CONF_DEPARTURE_DEBOUNCE_SECONDS, DEFAULT_DEPARTURE_DEBOUNCE_SECONDS
+                )
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -66,4 +74,5 @@ class SmartNotifyConfig:
             CONF_DEFAULT_EXPIRE_AFTER: self.default_expire_after,
             CONF_LOG_LEVEL: self.log_level,
             CONF_ARRIVAL_DEBOUNCE_SECONDS: self.arrival_debounce_seconds,
+            CONF_DEPARTURE_DEBOUNCE_SECONDS: self.departure_debounce_seconds,
         }

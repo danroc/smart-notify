@@ -56,6 +56,7 @@ def test_strategy_queues_when_empty() -> None:
     """Arrival and closest wait; snapshot strategies drop."""
     assert strategy_queues_when_empty("arrival") is True
     assert strategy_queues_when_empty("closest") is True
+    assert strategy_queues_when_empty("departure") is True
     assert strategy_queues_when_empty("direct") is False
     assert strategy_queues_when_empty("home") is False
     assert strategy_queues_when_empty("away") is False

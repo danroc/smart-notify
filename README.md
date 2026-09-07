@@ -56,16 +56,18 @@ data:
 
 ### Strategies
 
-| Strategy  | Who gets notified                                       | If nobody matches                   |
-| --------- | ------------------------------------------------------- | ----------------------------------- |
-| `direct`  | Everyone eligible                                       | Dropped                             |
-| `home`    | People at home right now                                | Dropped                             |
-| `away`    | People away right now                                   | Dropped                             |
-| `closest` | People within `tolerance` of whoever is closest to home | Queued until someone has a location |
-| `arrival` | People at home right now                                | Queued until someone arrives home   |
+| Strategy    | Who gets notified                                       | If nobody matches                   |
+| ----------- | ------------------------------------------------------- | ----------------------------------- |
+| `direct`    | Everyone eligible                                       | Dropped                             |
+| `home`      | People at home right now                                | Dropped                             |
+| `away`      | People away right now                                   | Dropped                             |
+| `closest`   | People within `tolerance` of whoever is closest to home | Queued until someone has a location |
+| `arrival`   | People at home right now                                | Queued until someone arrives home   |
+| `departure` | People away right now                                   | Queued until someone leaves home    |
 
-Queued notifications retry when someone enters the home zone. The `away` strategy does
-not wait for someone to leave. If nobody is away, the notification is dropped.
+Queued notifications retry when someone enters or leaves the home zone. The `home`
+and `away` strategies do not wait — if nobody matches, the notification is dropped.
+Use `arrival` or `departure` instead when you want to wait rather than drop it.
 
 Override the integration defaults per call with `strategy`, `tolerance`, and
 `expire_after`.

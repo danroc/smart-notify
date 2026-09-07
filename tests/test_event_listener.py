@@ -43,6 +43,36 @@ async def test_arrival_from_zone_invokes_callback(mock_hass: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
+async def test_departure_to_zone_invokes_callback(mock_hass: MagicMock) -> None:
+    """Home to named-zone transitions count as departures."""
+    listener = EventListener(mock_hass, ["person.alice"])
+    callback = AsyncMock()
+    listener.set_departure_callback(callback)
+
+    await listener._async_handle_person_change(
+        _state_change_event("person.alice", "home", "Work")
+    )
+
+    callback.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_departure_to_unavailable_does_not_invoke_callback(
+    mock_hass: MagicMock,
+) -> None:
+    """A person becoming unavailable does not count as a departure."""
+    listener = EventListener(mock_hass, ["person.alice"])
+    callback = AsyncMock()
+    listener.set_departure_callback(callback)
+
+    await listener._async_handle_person_change(
+        _state_change_event("person.alice", "home", "unavailable")
+    )
+
+    callback.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_update_persons_resubscribes(mock_hass: MagicMock) -> None:
     """Updating tracked persons restarts the state listener."""
     listener = EventListener(mock_hass, ["person.alice"])

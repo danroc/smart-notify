@@ -14,6 +14,7 @@ from custom_components.smart_notify.const import (
     CONF_DEFAULT_EXPIRE_AFTER,
     CONF_DEFAULT_STRATEGY,
     CONF_DEFAULT_TOLERANCE,
+    CONF_DEPARTURE_DEBOUNCE_SECONDS,
     CONF_LOG_LEVEL,
     LEVEL_CHOICES,
     LEVEL_LABELS,
@@ -80,6 +81,7 @@ def test_defaults_schema_rejects_invalid_expire_after() -> None:
             CONF_DEFAULT_TOLERANCE: 500,
             CONF_DEFAULT_EXPIRE_AFTER: "bad",
             CONF_ARRIVAL_DEBOUNCE_SECONDS: 30,
+            CONF_DEPARTURE_DEBOUNCE_SECONDS: 30,
             CONF_LOG_LEVEL: "info",
         })
 
