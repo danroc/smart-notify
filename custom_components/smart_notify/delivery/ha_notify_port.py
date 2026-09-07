@@ -68,6 +68,7 @@ class HassNotifyPort:
                 legacy_domain, legacy_service_name = legacy_service
                 await self._async_call_service(legacy_domain, legacy_service_name, data)
                 return
+
             _LOGGER.warning(
                 "Dropping rich notify data for entity %s; could not resolve "
                 "legacy mobile_app service",
