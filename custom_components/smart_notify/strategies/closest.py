@@ -19,16 +19,13 @@ class ClosestStrategy(Strategy):
 
     def select_recipients(self, context: StrategyContext) -> list[str]:
         """Return persons within tolerance of the closest distance."""
-        raw = context.params.get("tolerance", DEFAULT_TOLERANCE)
-        tolerance = int(DEFAULT_TOLERANCE if raw is None else raw)
-        distances: list[tuple[str, float]] = []
-        for state in context.persons:
-            distance = distance_to_home_meters(context.hass, state)
-            if distance is None:
-                continue
-            distances.append((state.entity_id, distance))
-            _LOGGER.debug("Distance for %s: %.1f m", state.entity_id, distance)
-
+        raw = context.params.get("tolerance")
+        tolerance = DEFAULT_TOLERANCE if raw is None else int(raw)
+        distances = [
+            (state.entity_id, distance)
+            for state in context.persons
+            if (distance := distance_to_home_meters(context.hass, state)) is not None
+        ]
         if not distances:
             return []
 
