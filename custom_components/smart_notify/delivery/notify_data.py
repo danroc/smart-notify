@@ -39,12 +39,7 @@ def build_notify_data(payload: NotificationPayload) -> dict[str, Any]:
         ("actions", payload.actions),
     ])
 
-    data: dict[str, Any] = {"message": payload.message}
-    data.update(
-        compact_dict([
-            ("title", payload.title),
-            ("data", notify_data),
-        ])
-    )
-
-    return data
+    return {"message": payload.message} | compact_dict([
+        ("title", payload.title),
+        ("data", notify_data),
+    ])
