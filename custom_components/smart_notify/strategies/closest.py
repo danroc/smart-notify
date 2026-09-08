@@ -34,10 +34,12 @@ class ClosestStrategy(Strategy):
         recipients = [
             entity_id for entity_id, distance in distances if distance <= threshold
         ]
+
         _LOGGER.debug(
             "Closest distance %.1f m, tolerance %d m, recipients: %s",
             minimum,
             tolerance,
             recipients,
         )
+
         return recipients
