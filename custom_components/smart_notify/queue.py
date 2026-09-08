@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from datetime import datetime
 
 from homeassistant.util import dt as dt_util
 
@@ -37,22 +36,14 @@ class QueueManager:
 
     async def enqueue(self, payload: NotificationPayload) -> QueuedNotification:
         """Add a notification to the queue."""
-        notification_id = payload.id or generate_id()
-
-        if payload.id != notification_id:
-            payload = replace(payload, id=notification_id)
-
-        queued = QueuedNotification(
-            id=notification_id,
-            payload=payload,
-            status=QUEUE_STATUS_PENDING,
-        )
+        payload = replace(payload, id=payload.id or generate_id())
+        queued = QueuedNotification(id=payload.id, payload=payload)
 
         queue = self._storage.get_queue()
         queue.append(queued)
         self._storage.set_queue(queue)
-
         await self._storage.async_save()
+
         _LOGGER.debug("Queued notification %s", queued.id)
         return queued
 
@@ -65,32 +56,23 @@ class QueueManager:
         await self._storage.async_save()
         _LOGGER.debug("Removed notification %s from queue", notification_id)
 
-    async def expire_stale(
-        self, now: datetime | None = None
-    ) -> list[QueuedNotification]:
+    async def expire_stale(self) -> list[QueuedNotification]:
         """Expire notifications past their expiry time and prune them."""
-        reference = now or dt_util.utcnow()
+        reference = dt_util.utcnow()
+        queue = self._storage.get_queue()
+        expired: list[QueuedNotification] = []
+        kept: list[QueuedNotification] = []
 
-        expired_items: list[QueuedNotification] = []
-        updated: list[QueuedNotification] = []
-        changed = False
-
-        for item in self._storage.get_queue():
+        for item in queue:
             if item.status == QUEUE_STATUS_PENDING and item.expires <= reference:
                 item.status = QUEUE_STATUS_EXPIRED
-                expired_items.append(item)
-                changed = True
+                expired.append(item)
                 _LOGGER.debug("Expiring notification %s", item.id)
-                continue
+            elif item.status != QUEUE_STATUS_EXPIRED:
+                kept.append(item)
 
-            if item.status == QUEUE_STATUS_EXPIRED:
-                changed = True
-                continue
-
-            updated.append(item)
-
-        if changed:
-            self._storage.set_queue(updated)
+        if len(kept) != len(queue):
+            self._storage.set_queue(kept)
             await self._storage.async_save()
 
-        return expired_items
+        return expired
