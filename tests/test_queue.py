@@ -46,7 +46,10 @@ async def test_queue_remove(queue_manager: QueueManager) -> None:
 
 
 @pytest.mark.asyncio
-async def test_queue_expiration(queue_manager: QueueManager) -> None:
+async def test_queue_expiration(
+    queue_manager: QueueManager,
+    storage: SmartNotifyStorage,
+) -> None:
     """Expired notifications are removed from storage."""
     payload = make_payload("expired", expires_delta=timedelta(hours=-1))
     await queue_manager.enqueue(payload)
@@ -54,7 +57,7 @@ async def test_queue_expiration(queue_manager: QueueManager) -> None:
     assert len(expired) == 1
     assert expired[0].id == "expired"
     assert queue_manager.count_pending() == 0
-    assert queue_manager._storage.get_queue() == []
+    assert storage.get_queue() == []
 
 
 @pytest.mark.asyncio

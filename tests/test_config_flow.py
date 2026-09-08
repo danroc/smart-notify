@@ -19,7 +19,7 @@ from custom_components.smart_notify.const import (
     CONF_PERSONS,
     DOMAIN,
 )
-from tests.conftest import make_config_entry
+from tests.conftest import make_config_entry, setup_integration
 
 
 def _schema_defaults(schema: vol.Schema) -> dict[str, list[str]]:
@@ -110,10 +110,6 @@ async def test_config_flow_reconfigure_adds_person(hass: HomeAssistant) -> None:
         "person.alice": ["notify.mobile_app_alice"],
         "person.bob": ["notify.mobile_app_bob"],
     }
-    assert entry.data[CONF_DEFAULT_STRATEGY] == "direct"
-    assert entry.data[CONF_DEFAULT_TOLERANCE] == 500
-    assert entry.data[CONF_DEFAULT_EXPIRE_AFTER] == "4h"
-    assert entry.data[CONF_LOG_LEVEL] == "info"
 
 
 @pytest.mark.asyncio
@@ -174,3 +170,40 @@ async def test_config_flow_reconfigure_requires_person(hass: HomeAssistant) -> N
     errors = result["errors"]
     assert errors is not None
     assert errors["base"] == "persons_required"
+
+
+@pytest.mark.asyncio
+async def test_options_flow_updates_defaults_and_services(
+    hass: HomeAssistant,
+) -> None:
+    """Options flow writes defaults and person services without mixing keys."""
+    entry = await setup_integration(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == FlowResultType.FORM
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_DEFAULT_STRATEGY: "home",
+            CONF_DEFAULT_TOLERANCE: 100,
+            CONF_DEFAULT_EXPIRE_AFTER: "2h",
+            CONF_ARRIVAL_DEBOUNCE_SECONDS: 10,
+            CONF_DEPARTURE_DEBOUNCE_SECONDS: 15,
+            CONF_LOG_LEVEL: "debug",
+            "person.alice": ["notify.mobile_app_alice"],
+            "person.bob": ["notify.mobile_app_bob"],
+        },
+    )
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert entry.data[CONF_PERSONS] == ["person.alice", "person.bob"]
+    assert entry.data[CONF_DEFAULT_STRATEGY] == "home"
+    assert entry.data[CONF_DEFAULT_TOLERANCE] == 100
+    assert entry.data[CONF_DEFAULT_EXPIRE_AFTER] == "2h"
+    assert entry.data[CONF_ARRIVAL_DEBOUNCE_SECONDS] == 10
+    assert entry.data[CONF_DEPARTURE_DEBOUNCE_SECONDS] == 15
+    assert entry.data[CONF_LOG_LEVEL] == "debug"
+    assert entry.data[CONF_PERSON_SERVICES] == {
+        "person.alice": ["notify.mobile_app_alice"],
+        "person.bob": ["notify.mobile_app_bob"],
+    }
+    assert "person.alice" not in entry.data

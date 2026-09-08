@@ -17,144 +17,99 @@ from custom_components.smart_notify.strategies.home import HomeStrategy
 from tests.conftest import make_person
 
 
-@pytest.fixture
-def hass(mock_hass: MagicMock) -> MagicMock:
-    """Alias fixture for strategy tests."""
-    return mock_hass
-
-
 def test_strategy_registry_contains_all_strategies() -> None:
     """Ensure all strategies are registered under the single-word names."""
-    names = registry.names()
-    assert names == ["arrival", "away", "closest", "departure", "direct", "home"]
-    assert "everyone" not in names
-    assert "everyone_home" not in names
-    assert "everyone_away" not in names
-    assert "first_home" not in names
-    assert "closest_with_tolerance" not in names
-    assert "template" not in names
+    assert registry.names() == [
+        "arrival",
+        "away",
+        "closest",
+        "departure",
+        "direct",
+        "home",
+    ]
 
 
-def test_closest_tolerance_zero_selects_min_distance_only(hass: MagicMock) -> None:
+def test_closest_tolerance_zero_selects_min_distance_only(mock_hass: MagicMock) -> None:
     """Tolerance 0 returns only person(s) at the minimum distance."""
     persons = [
         make_person("person.alice", "not_home", 48.8600, 2.3522),
         make_person("person.bob", "not_home", 48.9000, 2.3522),
     ]
-    context = StrategyContext(hass=hass, persons=persons, params={"tolerance": 0})
+    context = StrategyContext(hass=mock_hass, persons=persons, params={"tolerance": 0})
     recipients = ClosestStrategy().select_recipients(context)
     assert recipients == ["person.alice"]
 
 
-def test_closest_tolerance_band(hass: MagicMock) -> None:
-    """Closest strategy band selects everyone within tolerance of min distance."""
+@pytest.mark.parametrize("params", [{"tolerance": 500}, {}])
+def test_closest_tolerance_band(mock_hass: MagicMock, params: dict[str, int]) -> None:
+    """Closest band selects everyone within 500 m of the minimum distance."""
     persons = [
         make_person("person.alice", "not_home", 48.8600, 2.3522),
         make_person("person.bob", "not_home", 48.8604, 2.3522),
         make_person("person.charlie", "not_home", 48.9000, 2.3522),
     ]
-    context = StrategyContext(hass=hass, persons=persons, params={"tolerance": 500})
+    context = StrategyContext(hass=mock_hass, persons=persons, params=params)
     recipients = ClosestStrategy().select_recipients(context)
-    assert "person.alice" in recipients
-    assert "person.bob" in recipients
-    assert "person.charlie" not in recipients
+    assert recipients == ["person.alice", "person.bob"]
 
 
-def test_closest_omitted_tolerance_defaults_to_500(hass: MagicMock) -> None:
-    """Omitted tolerance defaults to DEFAULT_TOLERANCE (500 m) for closest band."""
-    persons = [
-        make_person("person.alice", "not_home", 48.8600, 2.3522),
-        make_person("person.bob", "not_home", 48.8604, 2.3522),
-        make_person("person.charlie", "not_home", 48.9000, 2.3522),
-    ]
-    context = StrategyContext(hass=hass, persons=persons, params={})
-    recipients = ClosestStrategy().select_recipients(context)
-    assert "person.alice" in recipients
-    assert "person.bob" in recipients
-    assert "person.charlie" not in recipients
-
-
-def test_closest_tolerance_zero_includes_ties(hass: MagicMock) -> None:
+def test_closest_tolerance_zero_includes_ties(mock_hass: MagicMock) -> None:
     """People at the same minimum distance are all selected."""
     persons = [
         make_person("person.alice", "not_home", 48.8600, 2.3522),
         make_person("person.bob", "not_home", 48.8600, 2.3522),
         make_person("person.charlie", "not_home", 48.9000, 2.3522),
     ]
-    context = StrategyContext(hass=hass, persons=persons, params={"tolerance": 0})
+    context = StrategyContext(hass=mock_hass, persons=persons, params={"tolerance": 0})
     recipients = ClosestStrategy().select_recipients(context)
     assert set(recipients) == {"person.alice", "person.bob"}
 
 
-def test_direct_selects_all_eligible(hass: MagicMock) -> None:
+def test_direct_selects_all_eligible(mock_hass: MagicMock) -> None:
     """Direct notifies every eligible person regardless of presence."""
     persons = [
         make_person("person.alice", "home", 48.8566, 2.3522),
         make_person("person.bob", "not_home", 48.9000, 2.3522),
     ]
-    context = StrategyContext(hass=hass, persons=persons, params={})
+    context = StrategyContext(hass=mock_hass, persons=persons, params={})
     recipients = DirectStrategy().select_recipients(context)
     assert recipients == ["person.alice", "person.bob"]
 
 
-def test_home_selects_only_people_at_home(hass: MagicMock) -> None:
+def test_home_selects_only_people_at_home(mock_hass: MagicMock) -> None:
     """Home selects only people at home."""
     persons = [
         make_person("person.alice", "home", 48.8566, 2.3522),
         make_person("person.bob", "not_home", 48.9000, 2.3522),
     ]
-    context = StrategyContext(hass=hass, persons=persons, params={})
+    context = StrategyContext(hass=mock_hass, persons=persons, params={})
     recipients = HomeStrategy().select_recipients(context)
     assert recipients == ["person.alice"]
 
 
-def test_home_and_arrival_select_the_same_people(hass: MagicMock) -> None:
-    """Home and arrival share presence selection; queueing is the only difference."""
-    persons = [
-        make_person("person.alice", "home", 48.8566, 2.3522),
-        make_person("person.bob", "not_home", 48.9000, 2.3522),
-    ]
-    context = StrategyContext(hass=hass, persons=persons, params={})
-    home = HomeStrategy().select_recipients(context)
-    arrival = ArrivalStrategy().select_recipients(context)
-    assert home == arrival
-
-
-def test_arrival_empty_when_everyone_away(hass: MagicMock) -> None:
+def test_arrival_empty_when_everyone_away(mock_hass: MagicMock) -> None:
     """Arrival with nobody home returns no recipients."""
     persons = [make_person("person.alice", "not_home", 48.9000, 2.3522)]
-    context = StrategyContext(hass=hass, persons=persons, params={})
+    context = StrategyContext(hass=mock_hass, persons=persons, params={})
     recipients = ArrivalStrategy().select_recipients(context)
     assert recipients == []
 
 
-def test_away_includes_zone_states(hass: MagicMock) -> None:
+def test_away_includes_zone_states(mock_hass: MagicMock) -> None:
     """Persons in named zones count as away from home."""
     persons = [
         make_person("person.alice", "Work", 48.9000, 2.3522),
         make_person("person.bob", "home", 48.8566, 2.3522),
         make_person("person.carol", "not_home", 48.9100, 2.3522),
     ]
-    context = StrategyContext(hass=hass, persons=persons, params={})
+    context = StrategyContext(hass=mock_hass, persons=persons, params={})
     recipients = AwayStrategy().select_recipients(context)
     assert recipients == ["person.alice", "person.carol"]
 
 
-def test_away_and_departure_select_the_same_people(hass: MagicMock) -> None:
-    """Away and departure share presence selection; queueing is the only difference."""
-    persons = [
-        make_person("person.alice", "home", 48.8566, 2.3522),
-        make_person("person.bob", "not_home", 48.9000, 2.3522),
-    ]
-    context = StrategyContext(hass=hass, persons=persons, params={})
-    away = AwayStrategy().select_recipients(context)
-    departure = DepartureStrategy().select_recipients(context)
-    assert away == departure
-
-
-def test_departure_empty_when_everyone_home(hass: MagicMock) -> None:
+def test_departure_empty_when_everyone_home(mock_hass: MagicMock) -> None:
     """Departure with everyone home returns no recipients."""
     persons = [make_person("person.alice", "home", 48.8566, 2.3522)]
-    context = StrategyContext(hass=hass, persons=persons, params={})
+    context = StrategyContext(hass=mock_hass, persons=persons, params={})
     recipients = DepartureStrategy().select_recipients(context)
     assert recipients == []

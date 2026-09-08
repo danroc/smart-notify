@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -12,39 +13,17 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.smart_notify.const import DOMAIN
 from custom_components.smart_notify.models import DeliveryRecord
-from custom_components.smart_notify.services import SERVICE_SEND_SCHEMA
 from tests.conftest import set_person_away, set_person_home, setup_integration
 
 
 @pytest.mark.asyncio
-async def test_service_validation_requires_message(
+async def test_service_rejects_invalid_call(
     hass: HomeAssistant,
     smart_notify_config_entry: MockConfigEntry,
 ) -> None:
-    """Service rejects calls without a message."""
+    """Registered send service uses SERVICE_SEND_SCHEMA."""
     with pytest.raises(vol.Invalid, match="required key not provided"):
-        await hass.services.async_call(
-            DOMAIN,
-            "send",
-            {},
-            blocking=True,
-        )
-
-
-@pytest.mark.parametrize(
-    ("field", "value"),
-    [
-        ("queue_if_no_candidate", True),
-        ("channels", ["mobile_app"]),
-        ("metadata", {"source": "automation"}),
-        ("priority", "high"),
-        ("data", {"url": "https://example.com"}),
-    ],
-)
-def test_service_schema_rejects_removed_fields(field: str, value: object) -> None:
-    """Removed service fields are rejected by the schema."""
-    with pytest.raises(vol.Invalid):
-        SERVICE_SEND_SCHEMA({"message": "Hello", field: value})
+        await hass.services.async_call(DOMAIN, "send", {}, blocking=True)
 
 
 @pytest.mark.asyncio
@@ -97,21 +76,6 @@ async def test_service_send_delivers_to_home_recipients(
             blocking=True,
         )
     assert coordinator.delivered_today() == 1
-
-
-@pytest.mark.asyncio
-async def test_service_rejects_empty_persons(
-    hass: HomeAssistant,
-    smart_notify_config_entry: MockConfigEntry,
-) -> None:
-    """An empty persons list is invalid."""
-    with pytest.raises(vol.Invalid, match="length"):
-        await hass.services.async_call(
-            DOMAIN,
-            "send",
-            {"message": "Hello", "persons": []},
-            blocking=True,
-        )
 
 
 @pytest.mark.asyncio
@@ -190,34 +154,26 @@ async def test_service_all_unconfigured_persons_drops_with_direct(
     assert coordinator.pending_count() == 0
 
 
+@pytest.mark.parametrize(
+    ("strategy", "setup"),
+    [
+        ("home", set_person_away),
+        ("away", set_person_home),
+    ],
+)
 @pytest.mark.asyncio
-async def test_home_does_not_queue_by_default(
+async def test_snapshot_strategy_does_not_queue(
     hass: HomeAssistant,
     smart_notify_config_entry: MockConfigEntry,
+    strategy: str,
+    setup: Callable[[HomeAssistant, str], None],
 ) -> None:
-    """Home is a snapshot: nobody home means drop, not wait."""
-    set_person_away(hass, "person.alice")
+    """Home and away drop when nobody matches instead of waiting."""
+    setup(hass, "person.alice")
     await hass.services.async_call(
         DOMAIN,
         "send",
-        {"message": "Hello", "strategy": "home"},
-        blocking=True,
-    )
-    coordinator = hass.data[DOMAIN]["coordinator"]
-    assert coordinator.pending_count() == 0
-
-
-@pytest.mark.asyncio
-async def test_away_does_not_queue_by_default(
-    hass: HomeAssistant,
-    smart_notify_config_entry: MockConfigEntry,
-) -> None:
-    """Away is a snapshot: nobody away means drop, not wait for departure."""
-    set_person_home(hass, "person.alice")
-    await hass.services.async_call(
-        DOMAIN,
-        "send",
-        {"message": "Hello", "strategy": "away"},
+        {"message": "Hello", "strategy": strategy},
         blocking=True,
     )
     coordinator = hass.data[DOMAIN]["coordinator"]
@@ -307,27 +263,6 @@ async def test_service_accepts_flat_mobile_fields(
     assert payload.level == "critical"
 
 
-def test_service_schema_accepts_important_level() -> None:
-    """Important is a valid level."""
-    validated = SERVICE_SEND_SCHEMA({"message": "Hello", "level": "important"})
-    assert validated["level"] == "important"
-
-
-@pytest.mark.asyncio
-async def test_service_rejects_invalid_level(
-    hass: HomeAssistant,
-    smart_notify_config_entry: MockConfigEntry,
-) -> None:
-    """Level must be silent, normal, important, or critical."""
-    with pytest.raises(vol.Invalid, match="must be one of"):
-        await hass.services.async_call(
-            DOMAIN,
-            "send",
-            {"message": "Hello", "level": "bogus"},
-            blocking=True,
-        )
-
-
 @pytest.mark.asyncio
 async def test_service_accepts_top_level_actions(
     hass: HomeAssistant,
@@ -359,53 +294,3 @@ async def test_service_accepts_top_level_actions(
     assert deliver.await_args is not None
     payload = deliver.await_args.args[0]
     assert payload.actions == [{"action": "ACK", "title": "Got it"}]
-
-
-@pytest.mark.asyncio
-async def test_service_rejects_invalid_action_shape(
-    hass: HomeAssistant,
-    smart_notify_config_entry: MockConfigEntry,
-) -> None:
-    """Each action requires action and title keys."""
-    with pytest.raises(vol.Invalid):
-        await hass.services.async_call(
-            DOMAIN,
-            "send",
-            {"message": "Hello", "actions": [{"action": "ACK"}]},
-            blocking=True,
-        )
-
-
-@pytest.mark.asyncio
-async def test_service_rejects_non_person_entities(
-    hass: HomeAssistant,
-    smart_notify_config_entry: MockConfigEntry,
-) -> None:
-    """Persons must be person domain entity IDs."""
-    with pytest.raises(vol.Invalid, match="person"):
-        await hass.services.async_call(
-            DOMAIN,
-            "send",
-            {"message": "Hello", "persons": ["light.kitchen"]},
-            blocking=True,
-        )
-
-
-@pytest.mark.parametrize(
-    "strategy",
-    ["template", "everyone", "everyone_home", "everyone_away", "first_home"],
-)
-@pytest.mark.asyncio
-async def test_service_rejects_removed_strategies(
-    hass: HomeAssistant,
-    smart_notify_config_entry: MockConfigEntry,
-    strategy: str,
-) -> None:
-    """Removed strategy names are rejected by the send schema."""
-    with pytest.raises(vol.Invalid, match="must be one of"):
-        await hass.services.async_call(
-            DOMAIN,
-            "send",
-            {"message": "Hello", "strategy": strategy},
-            blocking=True,
-        )

@@ -63,16 +63,3 @@ class SmartNotifyConfig:
                 )
             ),
         )
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize configuration."""
-        return {
-            CONF_PERSONS: self.persons,
-            CONF_PERSON_SERVICES: self.person_services,
-            CONF_DEFAULT_STRATEGY: self.default_strategy,
-            CONF_DEFAULT_TOLERANCE: self.default_tolerance,
-            CONF_DEFAULT_EXPIRE_AFTER: self.default_expire_after,
-            CONF_LOG_LEVEL: self.log_level,
-            CONF_ARRIVAL_DEBOUNCE_SECONDS: self.arrival_debounce_seconds,
-            CONF_DEPARTURE_DEBOUNCE_SECONDS: self.departure_debounce_seconds,
-        }

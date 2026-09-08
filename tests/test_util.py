@@ -7,41 +7,31 @@ from datetime import timedelta
 import pytest
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import State
-from homeassistant.util import dt as dt_util
 
 from custom_components.smart_notify.const import (
+    STRATEGIES_QUEUE_BY_DEFAULT,
     STRATEGY_CHOICES,
     STRATEGY_LABELS,
 )
-from custom_components.smart_notify.util import (
-    is_eligible_person,
-    parse_duration,
-    parse_expire_after,
-    strategy_queues_when_empty,
+from custom_components.smart_notify.util import is_eligible_person, parse_duration
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("2h", timedelta(hours=2)),
+        ("30m", timedelta(minutes=30)),
+    ],
 )
-
-
-def test_parse_duration_hours() -> None:
-    """Parse hour durations."""
-    assert parse_duration("2h") == timedelta(hours=2)
-
-
-def test_parse_duration_minutes() -> None:
-    """Parse minute durations."""
-    assert parse_duration("30m") == timedelta(minutes=30)
+def test_parse_duration(value: str, expected: timedelta) -> None:
+    """Parse shorthand durations."""
+    assert parse_duration(value) == expected
 
 
 def test_parse_duration_invalid() -> None:
     """Reject invalid durations."""
     with pytest.raises(ValueError, match="Invalid duration"):
         parse_duration("bad")
-
-
-def test_parse_expire_after() -> None:
-    """Parse expiration timestamps."""
-    base = dt_util.utcnow()
-    expires = parse_expire_after("1h", base)
-    assert expires == base + timedelta(hours=1)
 
 
 def test_is_eligible_person() -> None:
@@ -52,14 +42,10 @@ def test_is_eligible_person() -> None:
     assert not is_eligible_person(State("person.alice", STATE_UNKNOWN))
 
 
-def test_strategy_queues_when_empty() -> None:
-    """Arrival and closest wait; snapshot strategies drop."""
-    assert strategy_queues_when_empty("arrival") is True
-    assert strategy_queues_when_empty("closest") is True
-    assert strategy_queues_when_empty("departure") is True
-    assert strategy_queues_when_empty("direct") is False
-    assert strategy_queues_when_empty("home") is False
-    assert strategy_queues_when_empty("away") is False
+def test_queue_by_default_strategies() -> None:
+    """Arrival, closest, and departure wait; snapshot strategies do not."""
+    assert frozenset({"arrival", "closest", "departure"}) == STRATEGIES_QUEUE_BY_DEFAULT
+    assert set(STRATEGY_CHOICES) >= STRATEGIES_QUEUE_BY_DEFAULT
 
 
 def test_strategy_labels_cover_choices() -> None:

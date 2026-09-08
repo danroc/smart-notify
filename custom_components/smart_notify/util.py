@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Iterable
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.const import (
@@ -15,10 +15,9 @@ from homeassistant.const import (
     STATE_UNKNOWN,
 )
 from homeassistant.core import HomeAssistant, State
-from homeassistant.util import dt as dt_util
 from homeassistant.util import location as location_util
 
-from .const import LOG_LEVELS, LOGGER_NAME, STRATEGIES_QUEUE_BY_DEFAULT
+from .const import LOG_LEVELS, LOGGER_NAME
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 
@@ -37,13 +36,6 @@ def configure_logging(level_name: str) -> None:
 def generate_id() -> str:
     """Generate a unique notification identifier."""
     return uuid.uuid4().hex
-
-
-def parse_expire_after(value: str, reference: datetime | None = None) -> datetime:
-    """Parse a duration string such as '2h' into an expiry datetime."""
-    base = reference or dt_util.utcnow()
-    duration = parse_duration(value)
-    return base + duration
 
 
 def parse_duration(value: str) -> timedelta:
@@ -94,18 +86,8 @@ def distance_to_home_meters(hass: HomeAssistant, state: State) -> float | None:
 
 def get_person_states(hass: HomeAssistant, person_ids: list[str]) -> list[State]:
     """Return states for configured person entities."""
-    states: list[State] = []
-    for person_id in person_ids:
-        state = hass.states.get(person_id)
-        if state is not None:
-            states.append(state)
-    return states
-
-
-def strategy_queues_when_empty(strategy: str) -> bool:
-    """Return whether an empty recipient set should queue for this strategy.
-
-    Arrival waits until someone gets home. Closest waits until someone has a
-    usable location. Other strategies are snapshots of who matches now.
-    """
-    return strategy in STRATEGIES_QUEUE_BY_DEFAULT
+    return [
+        state
+        for person_id in person_ids
+        if (state := hass.states.get(person_id)) is not None
+    ]

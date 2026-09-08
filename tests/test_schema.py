@@ -72,6 +72,68 @@ def test_service_schema_accepts_valid_expire_after() -> None:
     assert validated["expire_after"] == "4h"
 
 
+def test_service_schema_requires_message() -> None:
+    """Send schema requires a message."""
+    with pytest.raises(vol.Invalid, match="required key not provided"):
+        SERVICE_SEND_SCHEMA({})
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("queue_if_no_candidate", True),
+        ("channels", ["mobile_app"]),
+        ("metadata", {"source": "automation"}),
+        ("priority", "high"),
+        ("data", {"url": "https://example.com"}),
+    ],
+)
+def test_service_schema_rejects_removed_fields(field: str, value: object) -> None:
+    """Removed service fields are rejected by the schema."""
+    with pytest.raises(vol.Invalid):
+        SERVICE_SEND_SCHEMA({"message": "Hello", field: value})
+
+
+def test_service_schema_accepts_important_level() -> None:
+    """Important is a valid level."""
+    validated = SERVICE_SEND_SCHEMA({"message": "Hello", "level": "important"})
+    assert validated["level"] == "important"
+
+
+def test_service_schema_rejects_invalid_level() -> None:
+    """Level must be silent, normal, important, or critical."""
+    with pytest.raises(vol.Invalid, match="must be one of"):
+        SERVICE_SEND_SCHEMA({"message": "Hello", "level": "bogus"})
+
+
+def test_service_schema_rejects_invalid_action_shape() -> None:
+    """Each action requires action and title keys."""
+    with pytest.raises(vol.Invalid):
+        SERVICE_SEND_SCHEMA({"message": "Hello", "actions": [{"action": "ACK"}]})
+
+
+def test_service_schema_rejects_non_person_entities() -> None:
+    """Persons must be person domain entity IDs."""
+    with pytest.raises(vol.Invalid, match="person"):
+        SERVICE_SEND_SCHEMA({"message": "Hello", "persons": ["light.kitchen"]})
+
+
+def test_service_schema_rejects_empty_persons() -> None:
+    """An empty persons list is invalid."""
+    with pytest.raises(vol.Invalid, match="length"):
+        SERVICE_SEND_SCHEMA({"message": "Hello", "persons": []})
+
+
+@pytest.mark.parametrize(
+    "strategy",
+    ["template", "everyone", "everyone_home", "everyone_away", "first_home"],
+)
+def test_service_schema_rejects_removed_strategies(strategy: str) -> None:
+    """Removed strategy names are rejected by the send schema."""
+    with pytest.raises(vol.Invalid, match="must be one of"):
+        SERVICE_SEND_SCHEMA({"message": "Hello", "strategy": strategy})
+
+
 def test_defaults_schema_rejects_invalid_expire_after() -> None:
     """Config defaults reject invalid duration shorthand."""
     schema = vol.Schema(defaults_schema_fields())

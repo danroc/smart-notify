@@ -67,7 +67,7 @@ def notify_selector() -> selector.Selector[selector.EntitySelectorConfig]:
     )
 
 
-def _debounce_selector() -> selector.Selector[selector.NumberSelectorConfig]:
+def debounce_selector() -> selector.Selector[selector.NumberSelectorConfig]:
     """Return a queue-flush debounce selector shared by arrival and departure."""
     return selector.NumberSelector(
         selector.NumberSelectorConfig(
@@ -78,13 +78,3 @@ def _debounce_selector() -> selector.Selector[selector.NumberSelectorConfig]:
             unit_of_measurement="seconds",
         ),
     )
-
-
-def arrival_debounce_selector() -> selector.Selector[selector.NumberSelectorConfig]:
-    """Return the arrival debounce selector."""
-    return _debounce_selector()
-
-
-def departure_debounce_selector() -> selector.Selector[selector.NumberSelectorConfig]:
-    """Return the departure debounce selector."""
-    return _debounce_selector()

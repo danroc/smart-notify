@@ -8,8 +8,6 @@ from typing import Any, ClassVar
 
 from homeassistant.core import HomeAssistant, State
 
-from ..const import HOME_STATES
-
 
 @dataclass(slots=True)
 class StrategyContext:
@@ -18,18 +16,6 @@ class StrategyContext:
     hass: HomeAssistant
     persons: list[State]
     params: dict[str, Any] = field(default_factory=dict)
-
-
-def recipients_at_home(context: StrategyContext) -> list[str]:
-    """Return person entity IDs currently at home."""
-    return [state.entity_id for state in context.persons if state.state in HOME_STATES]
-
-
-def recipients_away(context: StrategyContext) -> list[str]:
-    """Return person entity IDs currently away from home."""
-    return [
-        state.entity_id for state in context.persons if state.state not in HOME_STATES
-    ]
 
 
 class Strategy(ABC):

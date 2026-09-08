@@ -22,7 +22,7 @@ from ..const import (
     DEFAULT_LEVEL,
 )
 from ..models import NotificationPayload, SmartNotifyConfig
-from ..util import generate_id, parse_expire_after
+from ..util import generate_id, parse_duration
 
 
 def build_payload(
@@ -48,7 +48,7 @@ def build_payload(
         url=service_data.get(ATTR_URL),
         actions=service_data.get(ATTR_ACTIONS),
         created=now,
-        expires=parse_expire_after(str(expire_after), now),
+        expires=now + parse_duration(str(expire_after)),
         tolerance=service_data.get(ATTR_TOLERANCE, config.default_tolerance),
         persons=service_data.get(ATTR_PERSONS),
     )

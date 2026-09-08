@@ -21,11 +21,6 @@ class QueuedNotification:
     status: str = QUEUE_STATUS_PENDING
 
     @property
-    def created(self) -> datetime:
-        """When the notification was created."""
-        return self.payload.created
-
-    @property
     def expires(self) -> datetime:
         """When the notification expires."""
         return self.payload.expires

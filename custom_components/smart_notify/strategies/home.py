@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from ..const import STRATEGY_HOME
-from .base import Strategy, StrategyContext, recipients_at_home, register_strategy
+from ..const import HOME_STATES, STRATEGY_HOME
+from .base import Strategy, StrategyContext, register_strategy
 
 
 @register_strategy
@@ -14,4 +14,6 @@ class HomeStrategy(Strategy):
 
     def select_recipients(self, context: StrategyContext) -> list[str]:
         """Return persons at home."""
-        return recipients_at_home(context)
+        return [
+            state.entity_id for state in context.persons if state.state in HOME_STATES
+        ]

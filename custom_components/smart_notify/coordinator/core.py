@@ -20,15 +20,14 @@ from ..const import (
     EVENT_QUEUED,
     EVENT_SENT,
     LOGGER_NAME,
+    STRATEGIES_QUEUE_BY_DEFAULT,
 )
 from ..delivery import DeliveryManager, HassNotifyPort
-from ..events import fire_event
 from ..listeners import EventListener
 from ..models import DeliveryRecord, NotificationPayload, SmartNotifyConfig
 from ..queue import QueueManager
 from ..recipient import RecipientResolver
 from ..storage import SmartNotifyStorage
-from ..util import strategy_queues_when_empty
 from .payload import build_payload
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
@@ -57,19 +56,9 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._debounce_unsubs: dict[str, Callable[[], None]] = {}
 
     @property
-    def config(self) -> SmartNotifyConfig:
-        """Current configuration."""
-        return self._config
-
-    @property
     def queue_manager(self) -> QueueManager:
         """Queue manager."""
         return self._queue
-
-    @property
-    def resolver(self) -> RecipientResolver:
-        """Recipient resolver."""
-        return self._resolver
 
     @property
     def storage(self) -> SmartNotifyStorage:
@@ -106,15 +95,11 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._cancel_debounce(kind)
         await self._listener.async_stop()
 
-    def update_config(self, config: SmartNotifyConfig) -> None:
-        """Update configuration."""
+    async def async_update_config(self, config: SmartNotifyConfig) -> None:
+        """Update configuration and refresh person listeners."""
         self._config = config
         self._resolver = RecipientResolver(self.hass, config.persons)
         self._delivery.update_config(config)
-
-    async def async_update_config(self, config: SmartNotifyConfig) -> None:
-        """Update configuration and refresh person listeners."""
-        self.update_config(config)
         await self._listener.async_update_persons(config.persons)
 
     async def async_send(self, service_data: dict[str, Any]) -> None:
@@ -136,7 +121,7 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 await self._async_deliver(payload, recipients)
                 return
 
-            if strategy_queues_when_empty(payload.strategy):
+            if payload.strategy in STRATEGIES_QUEUE_BY_DEFAULT:
                 queued = await self._queue.enqueue(payload)
                 self._fire_notification_event(
                     EVENT_QUEUED,
@@ -278,8 +263,7 @@ class SmartNotifyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         **event_data: object,
     ) -> None:
         """Fire a Smart Notify event with the shared notification id."""
-        fire_event(
-            self.hass,
+        self.hass.bus.async_fire(
             event_type,
             {
                 "notification_id": notification_id,

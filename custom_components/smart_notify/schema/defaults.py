@@ -22,8 +22,7 @@ from ..const import (
     DEFAULT_TOLERANCE,
 )
 from .selectors import (
-    arrival_debounce_selector,
-    departure_debounce_selector,
+    debounce_selector,
     duration_selector,
     log_level_selector,
     strategy_selector,
@@ -55,13 +54,13 @@ def defaults_schema_fields(
             default=data.get(
                 CONF_ARRIVAL_DEBOUNCE_SECONDS, DEFAULT_ARRIVAL_DEBOUNCE_SECONDS
             ),
-        ): arrival_debounce_selector(),
+        ): debounce_selector(),
         vol.Required(
             CONF_DEPARTURE_DEBOUNCE_SECONDS,
             default=data.get(
                 CONF_DEPARTURE_DEBOUNCE_SECONDS, DEFAULT_DEPARTURE_DEBOUNCE_SECONDS
             ),
-        ): departure_debounce_selector(),
+        ): debounce_selector(),
         vol.Required(
             CONF_LOG_LEVEL,
             default=data.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL),

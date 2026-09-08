@@ -28,23 +28,30 @@ from tests.conftest import (
 )
 
 
-async def _advance_arrival_debounce(
-    hass: HomeAssistant,
-    freezer: FrozenDateTimeFactory,
-    seconds: int = DEFAULT_ARRIVAL_DEBOUNCE_SECONDS,
-) -> None:
-    """Advance time past the arrival debounce window."""
-    freezer.tick(timedelta(seconds=seconds))
-    async_fire_time_changed(hass)
-    await hass.async_block_till_done()
+def _recording_deliver(delivered: list[list[str]]) -> AsyncMock:
+    """Return a deliver mock that records recipient lists."""
+
+    async def _capture(
+        payload: NotificationPayload, recipients: list[str]
+    ) -> DeliveryRecord:
+        delivered.append(list(recipients))
+        return DeliveryRecord(
+            notification_id=payload.id,
+            recipients=recipients,
+            services=["notify.mobile_app_alice"],
+            delivered_at=dt_util.utcnow(),
+            success=True,
+        )
+
+    return AsyncMock(side_effect=_capture)
 
 
-async def _advance_departure_debounce(
+async def _advance_debounce(
     hass: HomeAssistant,
     freezer: FrozenDateTimeFactory,
-    seconds: int = DEFAULT_DEPARTURE_DEBOUNCE_SECONDS,
+    seconds: int,
 ) -> None:
-    """Advance time past the departure debounce window."""
+    """Advance time past a debounce window."""
     freezer.tick(timedelta(seconds=seconds))
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
@@ -89,7 +96,7 @@ async def test_person_departure_flushes_queue_after_debounce(
             State("person.alice", "not_home"),
         )
         assert coordinator.pending_count() == 1
-        await _advance_departure_debounce(hass, freezer)
+        await _advance_debounce(hass, freezer, DEFAULT_DEPARTURE_DEBOUNCE_SECONDS)
 
     assert coordinator.pending_count() == 0
     assert coordinator.delivered_today() == 1
@@ -134,7 +141,7 @@ async def test_person_arrival_flushes_queue_after_debounce(
             State("person.alice", "home"),
         )
         assert coordinator.pending_count() == 1
-        await _advance_arrival_debounce(hass, freezer)
+        await _advance_debounce(hass, freezer, DEFAULT_ARRIVAL_DEBOUNCE_SECONDS)
 
     assert coordinator.pending_count() == 0
     assert coordinator.delivered_today() == 1
@@ -166,21 +173,7 @@ async def test_arrival_debounce_waits_for_second_person(
     assert coordinator.pending_count() == 1
 
     delivered: list[list[str]] = []
-
-    async def _capture(
-        payload: NotificationPayload, recipients: list[str]
-    ) -> DeliveryRecord:
-        delivered.append(list(recipients))
-        return DeliveryRecord(
-            notification_id=payload.id,
-            recipients=recipients,
-            services=["notify.mobile_app_alice"],
-            delivered_at=dt_util.utcnow(),
-            success=True,
-        )
-
-    deliver = AsyncMock(side_effect=_capture)
-    with patch.object(coordinator._delivery, "deliver", deliver):
+    with patch.object(coordinator._delivery, "deliver", _recording_deliver(delivered)):
         set_person_home(hass, "person.alice")
         await coordinator._async_on_person_arrival(
             "person.alice",
@@ -200,7 +193,7 @@ async def test_arrival_debounce_waits_for_second_person(
             State("person.bob", "not_home"),
             State("person.bob", "home"),
         )
-        await _advance_arrival_debounce(hass, freezer, seconds=30)
+        await _advance_debounce(hass, freezer, 30)
 
     assert coordinator.pending_count() == 0
     assert len(delivered) == 1
@@ -220,7 +213,7 @@ async def test_restart_persistence(
         {"message": "Persist me", "strategy": "arrival"},
         blocking=True,
     )
-    storage = hass.data[DOMAIN]["storage"]
+    storage = hass.data[DOMAIN]["coordinator"].storage
     await storage.async_save()
 
     new_storage = type(storage)(hass)
@@ -266,7 +259,7 @@ async def test_zone_to_home_flushes_queue(
             State("person.alice", "Work"),
             State("person.alice", "home"),
         )
-        await _advance_arrival_debounce(hass, freezer)
+        await _advance_debounce(hass, freezer, DEFAULT_ARRIVAL_DEBOUNCE_SECONDS)
 
     assert coordinator.pending_count() == 0
     assert coordinator.delivered_today() == 1
@@ -313,7 +306,7 @@ async def test_failed_flush_does_not_retry(
             State("person.alice", "not_home"),
             State("person.alice", "home"),
         )
-        await _advance_arrival_debounce(hass, freezer)
+        await _advance_debounce(hass, freezer, DEFAULT_ARRIVAL_DEBOUNCE_SECONDS)
 
     assert deliver.await_count == 1
     assert coordinator.pending_count() == 0
@@ -348,21 +341,7 @@ async def test_queued_persons_filter_survives_flush(
     assert coordinator.pending_count() == 1
 
     delivered: list[list[str]] = []
-
-    async def _capture(
-        payload: NotificationPayload, recipients: list[str]
-    ) -> DeliveryRecord:
-        delivered.append(list(recipients))
-        return DeliveryRecord(
-            notification_id=payload.id,
-            recipients=recipients,
-            services=["notify.mobile_app_alice"],
-            delivered_at=dt_util.utcnow(),
-            success=True,
-        )
-
-    deliver = AsyncMock(side_effect=_capture)
-    with patch.object(coordinator._delivery, "deliver", deliver):
+    with patch.object(coordinator._delivery, "deliver", _recording_deliver(delivered)):
         for entity_id in ("person.alice", "person.bob"):
             set_person_home(hass, entity_id)
         await coordinator._async_on_person_arrival(
@@ -370,7 +349,7 @@ async def test_queued_persons_filter_survives_flush(
             State("person.alice", "not_home"),
             State("person.alice", "home"),
         )
-        await _advance_arrival_debounce(hass, freezer)
+        await _advance_debounce(hass, freezer, DEFAULT_ARRIVAL_DEBOUNCE_SECONDS)
 
     assert coordinator.pending_count() == 0
     assert delivered == [["person.alice"]]

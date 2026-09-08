@@ -50,52 +50,26 @@ async def test_storage_save_includes_schema_version(hass: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_storage_load_rejects_unversioned_data(hass: MagicMock) -> None:
-    """Storage without a schema version starts from defaults."""
-    storage = SmartNotifyStorage(hass)
-    storage._store.async_load = AsyncMock(return_value={"queue": []})
-
-    await storage.async_load()
-
-    assert storage.as_dict() == {
-        "schema_version": QUEUE_SCHEMA_VERSION,
-        "queue": [],
-    }
-
-
-@pytest.mark.asyncio
-async def test_storage_load_rejects_unsupported_schema_version(
-    hass: MagicMock,
-) -> None:
-    """Unsupported schema versions are ignored."""
-    storage = SmartNotifyStorage(hass)
-    storage._store.async_load = AsyncMock(
-        return_value={
+@pytest.mark.parametrize(
+    "stored",
+    [
+        {"queue": []},
+        {
             "schema_version": QUEUE_SCHEMA_VERSION + 1,
             "queue": [{"id": "old", "status": "pending", "payload": {}}],
-        }
-    )
-
-    await storage.async_load()
-
-    assert storage.as_dict() == {
-        "schema_version": QUEUE_SCHEMA_VERSION,
-        "queue": [],
-    }
-
-
-@pytest.mark.asyncio
-async def test_storage_load_rejects_invalid_queue_with_valid_schema(
-    hass: MagicMock,
-) -> None:
-    """Invalid queue payloads are ignored even when schema_version matches."""
-    storage = SmartNotifyStorage(hass)
-    storage._store.async_load = AsyncMock(
-        return_value={
+        },
+        {
             "schema_version": QUEUE_SCHEMA_VERSION,
             "queue": "not-a-list",
-        }
-    )
+        },
+    ],
+)
+async def test_storage_load_rejects_invalid_payload(
+    hass: MagicMock, stored: object
+) -> None:
+    """Unusable stored payloads are ignored in favor of empty defaults."""
+    storage = SmartNotifyStorage(hass)
+    storage._store.async_load = AsyncMock(return_value=stored)
 
     await storage.async_load()
 

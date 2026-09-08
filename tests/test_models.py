@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-import voluptuous as vol
-
 from custom_components.smart_notify.models import (
     NotificationPayload,
     QueuedNotification,
@@ -27,12 +24,6 @@ def test_payload_from_dict_preserves_important_level() -> None:
         make_payload().to_dict() | {"level": "important"}
     )
     assert restored.level == "important"
-
-
-def test_payload_from_dict_rejects_invalid_level() -> None:
-    """Unknown stored levels are rejected instead of coerced to normal."""
-    with pytest.raises(vol.Invalid):
-        NotificationPayload.from_dict(make_payload().to_dict() | {"level": "bogus"})
 
 
 def test_payload_from_dict_defaults_missing_level() -> None:
@@ -74,14 +65,6 @@ def test_payload_from_dict_ignores_legacy_template_field() -> None:
     data["template"] = "{{ states.person | list }}"
     restored = NotificationPayload.from_dict(data)
     assert not hasattr(restored, "template")
-
-
-def test_payload_from_dict_keeps_stored_strategy() -> None:
-    """Queue entries keep the strategy name they were stored with."""
-    data = make_payload().to_dict()
-    data["strategy"] = "first_home"
-    restored = NotificationPayload.from_dict(data)
-    assert restored.strategy == "first_home"
 
 
 def test_queued_notification_from_dict_follows_payload_strategy() -> None:
