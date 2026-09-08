@@ -24,4 +24,5 @@ def resolve_legacy_mobile_app_service(
     service_name = slugify(f"mobile_app_{device.name}")
     if not hass.services.has_service("notify", service_name):
         return None
+
     return ("notify", service_name)
