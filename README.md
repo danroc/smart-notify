@@ -14,11 +14,11 @@ notify actions for each person.
 
 You need [HACS](https://hacs.xyz/docs/setup/download) first.
 
-1. Open **HACS** → **Integrations**
+1. Open **HACS**
 2. Click the **⋮** menu (top right) → **Custom repositories**
-3. Add `https://github.com/danroc/smart-notify` and pick **Integration** as the category
+3. Add `https://github.com/danroc/smart-notify` and pick **Integration** as the type
 4. Click **Add**
-5. Back in Integrations, search for **Smart Notify**, open it, and click **Download**
+5. Search for **Smart Notify**, open it, and click **Download**
 6. Restart Home Assistant
 
 ## Setup
